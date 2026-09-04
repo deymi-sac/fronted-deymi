@@ -35,10 +35,13 @@ export function NuevoServicioModal({
   );
 
   const [referencia, setReferencia] = useState("");
-  const [fecha, setFecha] = useState("");
+  
   const [cliente, setCliente] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [idEstado, setIdEstado] = useState(1);
+
+  const [fecha, setFecha] = useState("");
+
 
   const [idUnidad, setIdUnidad] = useState("");
   const [idConductor, setIdConductor] = useState("");
@@ -101,12 +104,6 @@ export function NuevoServicioModal({
       return;
     }
 
-    if (!fecha) {
-      setError(
-        "La fecha es requerida.",
-      );
-      return;
-    }
 
 
     try {
@@ -138,7 +135,7 @@ export function NuevoServicioModal({
           CrearServicioInternoPayload = {
           tipo: "interno",
           referencia: referencia.trim(),
-          fecha,
+          fecha: fecha || undefined,
           cliente:
             cliente.trim() || undefined,
           observaciones:
@@ -230,10 +227,11 @@ export function NuevoServicioModal({
           referencia:
             referencia.trim(),
 
-          fecha,
 
           cliente:
             cliente.trim() || undefined,
+
+          fecha: fecha || undefined,
 
           observaciones:
             observaciones.trim() ||
@@ -418,23 +416,6 @@ export function NuevoServicioModal({
               />
             </div>
 
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">
-                Fecha *
-              </label>
-
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) =>
-                  setFecha(e.target.value)
-                }
-                className={inputClass}
-              />
-            </div>
-
-
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-700">
                 Cliente
@@ -447,6 +428,18 @@ export function NuevoServicioModal({
                 }
                 className={inputClass}
                 placeholder="Nombre del cliente"
+              />
+            </div>
+
+                        <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Fecha (opcional — si la dejas vacía, se usa la fecha y hora actuales)
+              </label>
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className={inputClass}
               />
             </div>
 
