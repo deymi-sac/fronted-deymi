@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   crearServicioInterno,
@@ -8,6 +8,13 @@ import {
   type CrearServicioInternoPayload,
   type CrearServicioTerceroPayload,
 } from "./services.api";
+
+import {
+  listarTransportistas,
+  listarConductoresDeTransportista,
+  type Transportista,
+  type ConductorTercero,
+} from "../transportistas/transportistas.api";
 
 import type { Unidad } from "../unidades/unidades.api";
 import type { Conductor } from "../conductores/conductores.api";
@@ -35,7 +42,7 @@ export function NuevoServicioModal({
   );
 
   const [referencia, setReferencia] = useState("");
-  
+
   const [cliente, setCliente] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [idEstado, setIdEstado] = useState(1);
@@ -50,6 +57,16 @@ export function NuevoServicioModal({
   // ==========================================================
   // DATOS TERCERO
   // ==========================================================
+
+  // Modo de la empresa: seleccionar una existente, o registrar una nueva
+  const [modoTransportista, setModoTransportista] = useState<"existente" | "nuevo">("existente");
+  const [transportistasListado, setTransportistasListado] = useState<Transportista[]>([]);
+  const [idTransportistaSeleccionado, setIdTransportistaSeleccionado] = useState("");
+
+  // Modo del conductor: seleccionar uno existente de la empresa, o registrar uno nuevo
+  const [modoConductorTercero, setModoConductorTercero] = useState<"existente" | "nuevo">("nuevo");
+  const [conductoresDeEmpresa, setConductoresDeEmpresa] = useState<ConductorTercero[]>([]);
+  const [idConductorTerceroSeleccionado, setIdConductorTerceroSeleccionado] = useState("");
 
   const [razonSocial, setRazonSocial] = useState("");
   const [ruc, setRuc] = useState("");
@@ -79,9 +96,98 @@ export function NuevoServicioModal({
 
   const [error, setError] = useState("");
 
+  // ==========================================================
+  // Cargar lista de transportistas cuando se abre el modal en modo "tercero"
+  // ==========================================================
+  useEffect(() => {
+    if (!abierto || tipo !== "tercero") return;
+
+    listarTransportistas({ page: 1, limit: 200 })
+      .then((res) => setTransportistasListado(res.data))
+      .catch(() => setTransportistasListado([]));
+  }, [abierto, tipo]);
+
+  // ==========================================================
+  // Cargar conductores de la empresa seleccionada
+  // ==========================================================
+  useEffect(() => {
+    if (!idTransportistaSeleccionado) {
+      return;
+    }
+
+    listarConductoresDeTransportista(Number(idTransportistaSeleccionado))
+      .then(setConductoresDeEmpresa)
+      .catch(() => setConductoresDeEmpresa([]));
+  }, [idTransportistaSeleccionado]);
 
   if (!abierto) {
     return null;
+  }
+
+  // ==========================================================
+  // Handlers de selección
+  // ==========================================================
+
+  function handleSeleccionarTransportista(id: string) {
+    setIdTransportistaSeleccionado(id);
+    setIdConductorTerceroSeleccionado("");
+    setModoConductorTercero("nuevo");
+    setConductoresDeEmpresa([]); 
+    limpiarCamposConductorTercero();
+
+    const encontrado = transportistasListado.find(
+      (t) => t.id_transportista === Number(id),
+    );
+
+    if (encontrado) {
+      setRazonSocial(encontrado.tex_razon_social);
+      setRuc(encontrado.tex_ruc);
+      setNombreComercial(encontrado.tex_nombre_comercial ?? "");
+      setHomologado(encontrado.tex_status_homolo);
+    }
+  }
+
+  function handleNuevaEmpresa() {
+    setModoTransportista("nuevo");
+    setIdTransportistaSeleccionado("");
+    setIdConductorTerceroSeleccionado("");
+    setModoConductorTercero("nuevo");
+    setConductoresDeEmpresa([]);
+    setRazonSocial("");
+    setRuc("");
+    setNombreComercial("");
+    setHomologado(false);
+    limpiarCamposConductorTercero();
+  }
+
+  function handleSeleccionarConductorTercero(id: string) {
+    setIdConductorTerceroSeleccionado(id);
+
+    const encontrado = conductoresDeEmpresa.find(
+      (c) => c.in_id_conductor === Number(id),
+    );
+
+    if (encontrado) {
+      setNombreConductor(encontrado.in_name);
+      setApellidoConductor(encontrado.in_apellido);
+      setDniConductor(encontrado.in_dni);
+      setBrevete(encontrado.in_brevete_num ?? "");
+      setTipoBrevete(encontrado.in_type_brevete ?? "");
+    }
+  }
+
+  function handleNuevoConductorTercero() {
+    setModoConductorTercero("nuevo");
+    setIdConductorTerceroSeleccionado("");
+    limpiarCamposConductorTercero();
+  }
+
+  function limpiarCamposConductorTercero() {
+    setNombreConductor("");
+    setApellidoConductor("");
+    setDniConductor("");
+    setBrevete("");
+    setTipoBrevete("");
   }
 
 
@@ -318,6 +424,9 @@ export function NuevoServicioModal({
 
   const inputClass =
     "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
+
+  const inputClassDeshabilitado =
+    "w-full rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500 outline-none";
 
 
   return (
@@ -599,9 +708,46 @@ export function NuevoServicioModal({
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
 
-                <h3 className="mb-4 text-sm font-bold text-slate-900">
-                  Empresa transportista
-                </h3>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Empresa transportista
+                  </h3>
+
+                  {modoTransportista === "existente" ? (
+                    <button
+                      type="button"
+                      onClick={handleNuevaEmpresa}
+                      className="text-xs font-semibold text-blue-600 hover:underline"
+                    >
+                      + Nueva empresa
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setModoTransportista("existente")}
+                      className="text-xs font-semibold text-blue-600 hover:underline"
+                    >
+                      Elegir empresa existente
+                    </button>
+                  )}
+                </div>
+
+                {modoTransportista === "existente" && (
+                  <div className="mb-4">
+                    <select
+                      value={idTransportistaSeleccionado}
+                      onChange={(e) => handleSeleccionarTransportista(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">Selecciona una empresa</option>
+                      {transportistasListado.map((t) => (
+                        <option key={t.id_transportista} value={t.id_transportista}>
+                          {t.tex_razon_social} — RUC {t.tex_ruc}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
@@ -612,7 +758,8 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
-                    className={inputClass}
+                    disabled={modoTransportista === "existente"}
+                    className={modoTransportista === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="Razón social *"
                   />
 
@@ -626,8 +773,9 @@ export function NuevoServicioModal({
                         ),
                       )
                     }
+                    disabled={modoTransportista === "existente"}
                     maxLength={11}
-                    className={inputClass}
+                    className={modoTransportista === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="RUC *"
                   />
 
@@ -638,7 +786,8 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
-                    className={inputClass}
+                    disabled={modoTransportista === "existente"}
+                    className={modoTransportista === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="Nombre comercial"
                   />
 
@@ -652,7 +801,8 @@ export function NuevoServicioModal({
                         onChange={(e) =>
                         setHomologado(e.target.value === "si")
                         }
-                        className={inputClass}
+                        disabled={modoTransportista === "existente"}
+                        className={modoTransportista === "existente" ? inputClassDeshabilitado : inputClass}
                     >
                         <option value="no">No</option>
                         <option value="si">Sí</option>
@@ -668,9 +818,54 @@ export function NuevoServicioModal({
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
 
-                <h3 className="mb-4 text-sm font-bold text-slate-900">
-                  Conductor tercero
-                </h3>
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Conductor tercero
+                  </h3>
+
+                  {modoTransportista === "existente" && idTransportistaSeleccionado && (
+                    modoConductorTercero === "existente" ? (
+                      <button
+                        type="button"
+                        onClick={handleNuevoConductorTercero}
+                        className="text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        + Nuevo conductor
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setModoConductorTercero("existente")}
+                        className="text-xs font-semibold text-blue-600 hover:underline"
+                      >
+                        Elegir conductor existente
+                      </button>
+                    )
+                  )}
+                </div>
+
+                {modoTransportista === "existente" && !idTransportistaSeleccionado && (
+                  <p className="mb-3 text-xs text-slate-400">
+                    Selecciona primero una empresa transportista para ver sus conductores.
+                  </p>
+                )}
+
+                {modoConductorTercero === "existente" && (
+                  <div className="mb-4">
+                    <select
+                      value={idConductorTerceroSeleccionado}
+                      onChange={(e) => handleSeleccionarConductorTercero(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">Selecciona un conductor</option>
+                      {conductoresDeEmpresa.map((c) => (
+                        <option key={c.in_id_conductor} value={c.in_id_conductor}>
+                          {c.in_name} {c.in_apellido} — DNI {c.in_dni}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
@@ -681,7 +876,8 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
-                    className={inputClass}
+                    disabled={modoConductorTercero === "existente"}
+                    className={modoConductorTercero === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="Nombre *"
                   />
 
@@ -692,7 +888,8 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
-                    className={inputClass}
+                    disabled={modoConductorTercero === "existente"}
+                    className={modoConductorTercero === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="Apellido *"
                   />
 
@@ -703,7 +900,8 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
-                    className={inputClass}
+                    disabled={modoConductorTercero === "existente"}
+                    className={modoConductorTercero === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="DNI *"
                   />
 
@@ -714,7 +912,8 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
-                    className={inputClass}
+                    disabled={modoConductorTercero === "existente"}
+                    className={modoConductorTercero === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="N° brevete"
                   />
 
@@ -725,7 +924,8 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
-                    className={inputClass}
+                    disabled={modoConductorTercero === "existente"}
+                    className={modoConductorTercero === "existente" ? inputClassDeshabilitado : inputClass}
                     placeholder="Tipo de brevete"
                   />
 
@@ -741,6 +941,10 @@ export function NuevoServicioModal({
                 <h3 className="mb-4 text-sm font-bold text-slate-900">
                   Unidad de tercero
                 </h3>
+
+                <p className="mb-3 text-xs text-slate-400">
+                  Las unidades pueden ser compartidas entre conductores de la misma empresa, escribe la placa a usar en este servicio.
+                </p>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
