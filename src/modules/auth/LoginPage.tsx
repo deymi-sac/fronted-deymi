@@ -2,15 +2,18 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { isAxiosError } from "axios";
 import { useLogin } from "./useLogin";
+import { TurnstileWidget } from "./TurnstileWidget";
 
 export function LoginPage() {
   const [correo, setCorreo] = useState("");
   const [contrasena, setContrasena] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
   const { mutate, isPending, error } = useLogin();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    mutate({ correo, contrasena });
+    if (!captchaToken) return;
+    mutate({ correo, contrasena, captchaToken });
   }
 
   const mensajeError = isAxiosError(error)
@@ -61,12 +64,13 @@ export function LoginPage() {
           </Link>
         </div>
 
+        <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken("")} />
 
         {mensajeError && <p className="mb-4 text-sm text-red-400">{mensajeError}</p>}
 
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || !captchaToken}
           className="w-full rounded-md bg-white py-2 font-medium text-black hover:bg-white/90 disabled:opacity-50"
         >
           {isPending ? "Ingresando..." : "Ingresar"}
