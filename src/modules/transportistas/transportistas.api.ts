@@ -117,3 +117,8 @@ export async function eliminarTransportista(
 ): Promise<void> {
   await api.delete(`/transportistas/${id}`);
 }
+
+export async function listarConductoresDeTransportista(id_transportista: number): Promise<ConductorTercero[]> {
+  const { data } = await api.get<ConductorTercero[]>(`/transportistas/${id_transportista}/conductores`);
+  return data;
+}
