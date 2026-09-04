@@ -205,6 +205,22 @@ export async function eliminarServicio(
 // ENVIAR CORREO DEL SERVICIO
 // ============================================================
 
+// ============================================================
+// EXPORTAR SERVICIOS A EXCEL
+// ============================================================
+
+export async function exportarServiciosExcel(params: {
+  mes?: number;
+  anio?: number;
+}): Promise<Blob> {
+  const { data } = await api.get("/servicios/exportar", {
+    params,
+    responseType: "blob",
+  });
+
+  return data;
+}
+
 export async function enviarCorreoServicio(
   id: number,
   correo: string,

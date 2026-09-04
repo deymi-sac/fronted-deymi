@@ -10,6 +10,7 @@ import {
 } from "./services.api";
 
 import { NuevoServicioModal } from "./NuevoServicioModal";
+import { ExportarExcelModal } from "./ExportarExcelModal";
 
 import {
   listarConductores,
@@ -164,6 +165,8 @@ export default function ServicesPage() {
   const [nuevoConductor, setNuevoConductor] =
     useState<number | null>(null);
   const [nuevoServicioAbierto, setNuevoServicioAbierto] =
+    useState(false);
+  const [exportarExcelAbierto, setExportarExcelAbierto] =
     useState(false);
 
   const [servicioSeleccionado, setServicioSeleccionado] =
@@ -488,15 +491,27 @@ async function manejarCambioConductor() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            setNuevoServicioAbierto(true)
-          }
-          className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
-        >
-          + Nuevo servicio
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() =>
+              setExportarExcelAbierto(true)
+            }
+            className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98]"
+          >
+            Exportar Excel
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setNuevoServicioAbierto(true)
+            }
+            className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
+          >
+            + Nuevo servicio
+          </button>
+        </div>
       </div>
 
       {/* ===================================================
@@ -1126,6 +1141,15 @@ async function manejarCambioConductor() {
           setNuevoServicioAbierto(false)
         }
         onCreado={manejarServicioCreado}
+      />
+
+      {/* ===================================================
+          MODAL EXPORTAR EXCEL
+      =================================================== */}
+
+      <ExportarExcelModal
+        abierto={exportarExcelAbierto}
+        onCerrar={() => setExportarExcelAbierto(false)}
       />
     </div>
   );
