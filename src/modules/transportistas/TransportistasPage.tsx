@@ -19,6 +19,7 @@ import { useTransportistas } from "./useTransportistas";
 import {
   type Transportista,
 } from "./transportistas.api";
+import { isAxiosError } from "axios";
 
 export default function TransportistasPage() {
   const [busqueda, setBusqueda] = useState("");
@@ -95,13 +96,19 @@ export default function TransportistasPage() {
     setMostrarDetalle(true);
   }
 
-  function handleEliminar(transportista: Transportista) {
-    const confirmar = window.confirm(
-      `¿Eliminar a "${transportista.tex_razon_social}"? Esta acción no se puede deshacer.`
-    );
-    if (!confirmar) return;
-    eliminarTransportista.mutate(transportista.id_transportista);
-  }
+ function handleEliminar(transportista: Transportista) {
+  const confirmar = window.confirm(
+    `¿Eliminar a "${transportista.tex_razon_social}"? Esta acción no se puede deshacer.`
+  );
+  if (!confirmar) return;
+
+  eliminarTransportista.mutate(transportista.id_transportista, {
+    onError: (err: unknown) => {
+      const mensaje = isAxiosError(err) ? err.response?.data?.error : "No se pudo eliminar el transportista";
+      alert(mensaje);
+    },
+  });
+}
 
   function limpiarBusqueda() {
     setBusqueda("");
