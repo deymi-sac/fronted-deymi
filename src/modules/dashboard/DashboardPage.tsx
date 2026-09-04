@@ -271,19 +271,27 @@ function DashboardPage() {
    * Solo mostramos conductores internos que
    * tienen una asignación activa.
    */
-  const conductoresDeymi = servicios.flatMap((servicio) => {
-    const asignaciones = servicio.servicio_conductores.filter(
-      (asignacion) => asignacion.estado === "Activo"
-    );
+  const ESTADOS_VISIBLES_DASHBOARD = ["Pendiente", "En proceso"];
 
-    return asignaciones.map((asignacion) => ({
-      id: asignacion.id_asignacion,
-      conductor: `${asignacion.conductores_interno.in_name} ${asignacion.conductores_interno.in_apellido}`,
-      servicio: servicio.referencia ?? `Servicio #${servicio.id_service}`,
-      unidad: obtenerPlaca(servicio),
-      estado: obtenerEstado(servicio),
-    }));
-  });
+  const conductoresDeymi = servicios
+    .filter((servicio) =>
+      ESTADOS_VISIBLES_DASHBOARD.includes(
+        servicio.estados_servicio?.nombre_estado ?? ""
+      )
+    )
+    .flatMap((servicio) => {
+      const asignaciones = servicio.servicio_conductores.filter(
+        (asignacion) => asignacion.estado === "Activo"
+      );
+
+      return asignaciones.map((asignacion) => ({
+        id: asignacion.id_asignacion,
+        conductor: `${asignacion.conductores_interno.in_name} ${asignacion.conductores_interno.in_apellido}`,
+        servicio: servicio.referencia ?? `Servicio #${servicio.id_service}`,
+        unidad: obtenerPlaca(servicio),
+        estado: obtenerEstado(servicio),
+      }));
+    });
 
   /*
    * ==========================================
