@@ -98,7 +98,7 @@ export async function obtenerServicios(
 export interface CrearServicioInternoPayload {
   tipo: "interno";
   referencia: string;
-  fecha: string;
+  fecha?: string;
   cliente?: string;
   observaciones?: string;
   id_estado: number;
@@ -125,7 +125,7 @@ export async function crearServicioInterno(
 export interface CrearServicioTerceroPayload {
   tipo: "tercero";
   referencia: string;
-  fecha: string;
+  fecha?: string;
   cliente?: string;
   observaciones?: string;
   id_estado: number;

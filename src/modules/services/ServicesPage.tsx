@@ -24,7 +24,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-
+import { formatearFecha } from "../../utils/fecha.utils";
 const ESTADO_PENDIENTE = 1;
 const ESTADO_EN_PROCESO = 2;
 const ESTADO_COMPLETADO = 3;
@@ -95,24 +95,6 @@ function obtenerTransportista(servicio: Servicio) {
   }
 
   return "DEYMI SAC";
-}
-
-function formatearFecha(fecha: string) {
-  if (!fecha) return "—";
-
-  const date = new Date(fecha);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
-  return date.toLocaleString("es-PE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 // ---------------------------------------------------------
