@@ -22,7 +22,7 @@ export function ForgotPasswordPage() {
     : null;
 
   return (
-    <div className="relative flex h-screen items-center justify-center bg-black">
+    <div className="relative flex h-screen items-center justify-center bg-black px-4">
       <img
         src="/bg-login.avif"
         alt=""

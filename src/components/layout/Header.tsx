@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Menu } from "lucide-react";
 
 interface Usuario {
   user_id: number;
@@ -27,7 +28,11 @@ function obtenerUsuario(): Usuario | null {
   }
 }
 
-export function Header() {
+interface HeaderProps {
+  onAbrirMenuMobile: () => void;
+}
+
+export function Header({ onAbrirMenuMobile }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const usuario = obtenerUsuario();
@@ -41,16 +46,26 @@ export function Header() {
     : "Usuario";
 
   return (
-    <header className="flex h-20 items-center justify-between border-b border-gray-200 bg-white px-8">
-      {/* Título */}
-      <div>
-        <h1 className="text-xl font-semibold text-[#18193B]">
-          
-        </h1>
+    <header className="flex h-20 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-8">
+      {/* Botón menú mobile + Título */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onAbrirMenuMobile}
+          className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 lg:hidden"
+        >
+          <Menu size={22} />
+        </button>
 
-        <p className="mt-1 text-sm text-gray-500">
-          
-        </p>
+        <div>
+          <h1 className="text-xl font-semibold text-[#18193B]">
+
+          </h1>
+
+          <p className="mt-1 text-sm text-gray-500">
+
+          </p>
+        </div>
       </div>
 
       {/* Usuario */}
