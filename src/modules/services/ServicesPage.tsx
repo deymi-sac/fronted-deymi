@@ -179,7 +179,7 @@ export default function ServicesPage() {
   const [recarga, setRecarga] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [meta, setMeta] = useState<{ total: number; page: number; limit: number; totalPages: number } | null>(null);
-  const LIMITE_POR_PAGINA = 20;
+  const LIMITE_POR_PAGINA = 10;
 
   // -------------------------------------------------------
   // Servicios en proceso
