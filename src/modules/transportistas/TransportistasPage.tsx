@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useEliminarTransportista } from "./useTransportistas";
+import { EditarTransportistaModal } from "./EditarTransportistaModal";
 import {
   Search,
   ChevronDown,
@@ -10,6 +12,7 @@ import {
   XCircle,
   Eye,
   Pencil,
+  Trash2,
 } from "lucide-react";
 
 import { useTransportistas } from "./useTransportistas";
@@ -22,8 +25,10 @@ export default function TransportistasPage() {
   const [pagina, setPagina] = useState(1);
   const [expandido, setExpandido] = useState<number | null>(null);
 
-  const [transportistaSeleccionado, setTransportistaSeleccionado] =
-    useState<Transportista | null>(null);
+  const [transportistaEditar, setTransportistaEditar] = useState<Transportista | null>(null);
+  const [transportistaSeleccionado, setTransportistaSeleccionado] = useState<Transportista | null>(null);
+
+  const eliminarTransportista = useEliminarTransportista();
 
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
 
@@ -90,6 +95,13 @@ export default function TransportistasPage() {
     setMostrarDetalle(true);
   }
 
+  function handleEliminar(transportista: Transportista) {
+    const confirmar = window.confirm(
+      `¿Eliminar a "${transportista.tex_razon_social}"? Esta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+    eliminarTransportista.mutate(transportista.id_transportista);
+  }
 
   function limpiarBusqueda() {
     setBusqueda("");
@@ -274,34 +286,16 @@ export default function TransportistasPage() {
 
                       return (
                         <TransportistaRow
-                          key={
-                            transportista.id_transportista
-                          }
+                          key={transportista.id_transportista}
                           transportista={transportista}
-                          numero={
-                            (pagina - 1) * 20 +
-                            index +
-                            1
-                          }
+                          numero={(pagina - 1) * 20 + index + 1}
                           estaExpandido={estaExpandido}
-                          cantidadConductores={
-                            cantidadConductores
-                          }
-                          cantidadUnidades={
-                            cantidadUnidades
-                          }
-                          onToggle={() =>
-                            toggleExpandir(
-                              transportista.id_transportista
-                            )
-                          }
-                          onDetalle={() =>
-                            abrirDetalle(
-                              transportista
-                            )
-                          }
-                         
-                          
+                          cantidadConductores={cantidadConductores}
+                          cantidadUnidades={cantidadUnidades}
+                          onToggle={() => toggleExpandir(transportista.id_transportista)}
+                          onDetalle={() => abrirDetalle(transportista)}
+                          onEditar={() => setTransportistaEditar(transportista)}
+                          onEliminar={() => handleEliminar(transportista)}
                         />
                       );
                     }
@@ -356,7 +350,7 @@ export default function TransportistasPage() {
         )}
       </div>
 
-      {/* MODAL DETALLE */}
+    {/* MODAL DETALLE */}
       {mostrarDetalle &&
         transportistaSeleccionado && (
           <DetalleTransportistaModal
@@ -369,8 +363,17 @@ export default function TransportistasPage() {
             }}
           />
         )}
-    </div>
-  );
+
+      {/* MODAL EDITAR */}
+      {transportistaEditar && (
+        <EditarTransportistaModal
+          key={transportistaEditar.id_transportista}
+          transportista={transportistaEditar}
+          onClose={() => setTransportistaEditar(null)}
+        />
+      )}
+      </div>
+      );
 }
 
 /* ============================================================
@@ -425,6 +428,8 @@ interface TransportistaRowProps {
   cantidadUnidades: number;
   onToggle: () => void;
   onDetalle: () => void;
+  onEditar: () => void;
+  onEliminar: () => void;
 }
 
 function TransportistaRow({
@@ -435,6 +440,8 @@ function TransportistaRow({
   cantidadUnidades,
   onToggle,
   onDetalle,
+  onEditar,
+  onEliminar,
 }: TransportistaRowProps) {
   return (
     <>
@@ -530,9 +537,19 @@ function TransportistaRow({
             <button
               type="button"
               title="Editar"
+              onClick={onEditar}
               className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
             >
               <Pencil size={17} />
+            </button>
+
+            <button
+              type="button"
+              title="Eliminar"
+              onClick={onEliminar}
+              className="rounded-lg p-2 text-red-500 transition hover:bg-red-50 hover:text-red-600"
+            >
+              <Trash2 size={17} />
             </button>
 
           </div>
