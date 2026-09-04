@@ -177,20 +177,23 @@ export default function ServicesPage() {
    * dentro del useEffect y, por tanto, evita el warning de ESLint.
    */
   const [recarga, setRecarga] = useState(0);
+  const [pagina, setPagina] = useState(1);
+  const [meta, setMeta] = useState<{ total: number; page: number; limit: number; totalPages: number } | null>(null);
+  const LIMITE_POR_PAGINA = 20;
 
   // -------------------------------------------------------
   // Servicios en proceso
   // -------------------------------------------------------
 
-  const serviciosEnProcesoQuery = useQuery({
-    queryKey: ["servicios", "en-proceso"],
-    queryFn: () =>
-      obtenerServicios({
-        id_estado: ESTADO_EN_PROCESO,
-        page: 1,
-        limit: 1000,
-      }),
-  });
+    const serviciosEnProcesoQuery = useQuery({
+      queryKey: ["servicios", "en-proceso"],
+      queryFn: () =>
+        obtenerServicios({
+          id_estado: ESTADO_EN_PROCESO,
+          page: 1,
+          limit: 1000,
+        }),
+    });
 
   // -------------------------------------------------------
   // Conductores activos
@@ -268,35 +271,35 @@ export default function ServicesPage() {
   // -------------------------------------------------------
 
   useEffect(() => {
-    const timeout = setTimeout(async () => {
-      try {
-        setCargando(true);
-        setError("");
+  const timeout = setTimeout(async () => {
+    try {
+      setCargando(true);
+      setError("");
 
-        const response = await obtenerServicios({
-          busqueda,
-          page: 1,
-          limit: 1000,
-        });
+      const response = await obtenerServicios({
+        busqueda,
+        page: pagina,
+        limit: LIMITE_POR_PAGINA,
+      });
 
-        setServicios(response.data);
-      } catch (error) {
-        console.error(
-          "Error cargando servicios:",
-          error,
-        );
+      setServicios(response.data);
+      setMeta(response.meta);
+    } catch (error) {
+      console.error(
+        "Error cargando servicios:",
+        error,
+      );
 
-        setError(
-          "No se pudieron cargar los servicios.",
-        );
-      } finally {
-        setCargando(false);
-      }
-    }, 300);
+      setError(
+        "No se pudieron cargar los servicios.",
+      );
+    } finally {
+      setCargando(false);
+    }
+  }, 300);
 
-    return () => clearTimeout(timeout);
-  }, [busqueda, recarga]);
-
+  return () => clearTimeout(timeout);
+}, [busqueda, recarga, pagina]);
   // -------------------------------------------------------
   // Crear servicio
   // -------------------------------------------------------
@@ -541,17 +544,44 @@ async function manejarCambioConductor() {
           <div className="w-full lg:w-80">
             <div className="relative">
               <input
-                type="text"
-                value={busqueda}
-                onChange={(e) =>
-                  setBusqueda(e.target.value)
-                }
-                placeholder="Buscar por referencia o cliente..."
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
-              />
+                  type="text"
+                  value={busqueda}
+                  onChange={(e) => {
+                    setBusqueda(e.target.value);
+                    setPagina(1);
+                  }}
+                  placeholder="Buscar por referencia o cliente..."
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
+                />
             </div>
           </div>
         </div>
+
+        {meta && meta.totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+              <p className="text-sm text-slate-500">
+                Página {meta.page} de {meta.totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={pagina <= 1}
+                  onClick={() => setPagina((actual) => Math.max(1, actual - 1))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50"
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  disabled={pagina >= meta.totalPages}
+                  onClick={() => setPagina((actual) => Math.min(meta.totalPages, actual + 1))}
+                  className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-50"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
 
         {/* Error */}
 
