@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useConductores } from "./useConductores";
 import { CrearConductorModal } from "./CrearConductorModal";
 import { EditarConductorModal } from "./EditarConductorModal";
-import { Pencil, UserPlus, Phone, Mail, IdCard } from "lucide-react";
+import { Pencil, UserPlus, UserRound, Phone, Mail, IdCard } from "lucide-react";
 import type { Conductor } from "./conductores.api";
 
 function iniciales(nombre: string, apellido: string) {
@@ -100,7 +100,7 @@ export function ConductoresPage() {
           <div className="flex min-h-[300px] items-center justify-center px-6">
             <div className="text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-                <span className="text-xl text-slate-400">—</span>
+                <UserRound size={22} className="text-slate-400" />
               </div>
               <h3 className="mt-4 text-sm font-semibold text-slate-900">No hay conductores</h3>
               <p className="mt-1 text-sm text-slate-500">

@@ -24,6 +24,9 @@ import {
   Eye,
   Pencil,
   Trash2,
+  ClipboardList,
+  UserRound,
+  Truck,
 } from "lucide-react";
 import { formatearFecha } from "../../utils/fecha.utils";
 const ESTADO_PENDIENTE = 1;
@@ -106,34 +109,36 @@ interface KpiCardProps {
   titulo: string;
   valor: number;
   descripcion: string;
+  icono: React.ReactNode;
 }
 
 function KpiCard({
   titulo,
   valor,
   descripcion,
+  icono,
 }: KpiCardProps) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-sm font-medium text-slate-500">
-        {titulo}
-      </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-500">
+            {titulo}
+          </p>
 
-      <div className="mt-3 flex items-end justify-between gap-4">
-        <p className="text-3xl font-bold tracking-tight text-slate-900">
-          {valor}
-        </p>
+          <p className="mt-3 text-3xl font-bold tracking-tight text-slate-900">
+            {valor}
+          </p>
 
-        <div className="rounded-xl bg-slate-100 px-3 py-2">
-          <span className="text-xs font-semibold text-slate-600">
-            Activos
-          </span>
+          <p className="mt-1 text-xs text-slate-400">
+            {descripcion}
+          </p>
+        </div>
+
+        <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#18193B]/10 text-[#18193B]">
+          {icono}
         </div>
       </div>
-
-      <p className="mt-2 text-xs text-slate-400">
-        {descripcion}
-      </p>
     </div>
   );
 }
@@ -523,18 +528,21 @@ async function manejarCambioConductor() {
           titulo="Servicios en proceso"
           valor={serviciosEnProceso}
           descripcion="Servicios actualmente en ejecución."
+          icono={<ClipboardList size={20} />}
         />
 
         <KpiCard
           titulo="Conductores propios disponibles"
           valor={conductoresDisponibles.length}
           descripcion="Conductores activos sin servicio asignado."
+          icono={<UserRound size={20} />}
         />
 
         <KpiCard
           titulo="Unidades propias disponibles"
           valor={unidadesDisponibles.length}
           descripcion="Unidades disponibles para asignación."
+          icono={<Truck size={20} />}
         />
       </div>
 

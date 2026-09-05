@@ -1,8 +1,77 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+} from "recharts";
+import {
   obtenerServiciosDashboard,
   type Servicio,
 } from "./dashboard.api";
+
+// Paleta de marca: verde, azul y rojo
+const COLOR_COMPLETADO = "#16a34a";
+const COLOR_EN_PROCESO = "#2563eb";
+const COLOR_CANCELADO = "#dc2626";
+const COLOR_PENDIENTE = "#94a3b8";
+
+const COLORES_ESTADO: Record<string, string> = {
+  Completado: COLOR_COMPLETADO,
+  "En proceso": COLOR_EN_PROCESO,
+  Cancelado: COLOR_CANCELADO,
+  Pendiente: COLOR_PENDIENTE,
+};
+
+const NOMBRES_MESES = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+];
+
+function calcularServiciosPorEstado(servicios: Servicio[]) {
+  const conteo = new Map<string, number>();
+
+  for (const servicio of servicios) {
+    const nombre = servicio.estados_servicio?.nombre_estado ?? "Sin estado";
+    conteo.set(nombre, (conteo.get(nombre) ?? 0) + 1);
+  }
+
+  return Array.from(conteo.entries()).map(([nombre, cantidad]) => ({
+    nombre,
+    cantidad,
+    color: COLORES_ESTADO[nombre] ?? "#cbd5e1",
+  }));
+}
+
+function calcularServiciosPorMes(servicios: Servicio[]) {
+  const hoy = new Date();
+  const meses: { clave: string; nombre: string; cantidad: number }[] = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    meses.push({
+      clave: `${fecha.getFullYear()}-${fecha.getMonth()}`,
+      nombre: NOMBRES_MESES[fecha.getMonth()],
+      cantidad: 0,
+    });
+  }
+
+  for (const servicio of servicios) {
+    const fecha = new Date(servicio.fecha);
+    const clave = `${fecha.getFullYear()}-${fecha.getMonth()}`;
+    const mes = meses.find((m) => m.clave === clave);
+    if (mes) mes.cantidad++;
+  }
+
+  return meses;
+}
 
 function obtenerPlaca(servicio: Servicio): string {
   if (servicio.unidades) {
@@ -160,6 +229,51 @@ function IconoUnidad() {
       <circle cx="7" cy="19" r="2" />
       <circle cx="18" cy="19" r="2" />
     </svg>
+  );
+}
+
+function GraficoServiciosPorEstado({ datos }: { datos: ReturnType<typeof calcularServiciosPorEstado> }) {
+  if (datos.length === 0) {
+    return (
+      <div className="flex h-[260px] items-center justify-center text-sm text-gray-400">
+        Sin datos suficientes.
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <PieChart>
+        <Pie
+          data={datos}
+          dataKey="cantidad"
+          nameKey="nombre"
+          innerRadius={60}
+          outerRadius={90}
+          paddingAngle={2}
+        >
+          {datos.map((entrada) => (
+            <Cell key={entrada.nombre} fill={entrada.color} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+
+function GraficoServiciosPorMes({ datos }: { datos: ReturnType<typeof calcularServiciosPorMes> }) {
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={datos}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+        <XAxis dataKey="nombre" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
+        <Tooltip />
+        <Bar dataKey="cantidad" fill={COLOR_EN_PROCESO} radius={[6, 6, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
   );
 }
 
@@ -345,6 +459,24 @@ function DashboardPage() {
           descripcion="Unidades vinculadas a servicios"
           icono={<IconoUnidad />}
         />
+      </section>
+
+      {/* ============================= */}
+      {/* GRÁFICOS */}
+      {/* ============================= */}
+
+      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-[#18193B]">Servicios por estado</h3>
+          <p className="mt-1 text-sm text-gray-500">Distribución del total de servicios registrados</p>
+          <GraficoServiciosPorEstado datos={calcularServiciosPorEstado(servicios)} />
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-[#18193B]">Servicios por mes</h3>
+          <p className="mt-1 text-sm text-gray-500">Últimos 6 meses de operación</p>
+          <GraficoServiciosPorMes datos={calcularServiciosPorMes(servicios)} />
+        </div>
       </section>
 
       {/* ============================= */}

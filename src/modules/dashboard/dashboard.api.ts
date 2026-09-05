@@ -92,7 +92,7 @@ export async function obtenerServiciosDashboard(): Promise<Servicio[]> {
   const { data } = await api.get<ServiciosResponse>("/servicios", {
     params: {
       page: 1,
-      limit: 20,
+      limit: 1000,
     },
   });
 

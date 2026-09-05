@@ -3,7 +3,7 @@ import { useUsuarios, useActualizarUsuario } from "./UseUsuarios";
 import { EditarUsuarioModal } from "./EditarUsuarioModal";
 import { CambiarPasswordModal } from "./CambiosPasswordModal";
 import { CrearUsuarioModal } from "./CrearUsuarioModal";
-import { Pencil, KeyRound, Power, PowerOff, UserPlus } from "lucide-react";
+import { Pencil, KeyRound, Power, PowerOff, UserPlus, Users } from "lucide-react";
 import type { Usuario } from "./usuarios.api";
 
 function iniciales(nombre: string, apellido: string) {
@@ -104,7 +104,7 @@ export function UsuariosPage() {
           <div className="flex min-h-[300px] items-center justify-center px-6">
             <div className="text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
-                <span className="text-xl text-slate-400">—</span>
+                <Users size={22} className="text-slate-400" />
               </div>
               <h3 className="mt-4 text-sm font-semibold text-slate-900">No hay usuarios</h3>
               <p className="mt-1 text-sm text-slate-500">
