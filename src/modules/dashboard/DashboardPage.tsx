@@ -35,31 +35,51 @@ const NOMBRES_MESES = [
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 
-function calcularServiciosPorEstado(servicios: Servicio[]) {
-  const conteo = new Map<string, number>();
+// Registros de la semana (últimos 7 días) agrupados por estado, con % y total
+function calcularRegistrosSemana(servicios: Servicio[]) {
+  const hoy = new Date();
+  const haceSieteDias = new Date(hoy);
+  haceSieteDias.setDate(hoy.getDate() - 7);
 
-  for (const servicio of servicios) {
+  const serviciosSemana = servicios.filter((servicio) => {
+    const fecha = new Date(servicio.fecha);
+    return fecha >= haceSieteDias && fecha <= hoy;
+  });
+
+  const conteo = new Map<string, number>();
+  for (const servicio of serviciosSemana) {
     const nombre = servicio.estados_servicio?.nombre_estado ?? "Sin estado";
     conteo.set(nombre, (conteo.get(nombre) ?? 0) + 1);
   }
 
-  return Array.from(conteo.entries()).map(([nombre, cantidad]) => ({
+  const total = serviciosSemana.length;
+
+  const datos = Array.from(conteo.entries()).map(([nombre, cantidad]) => ({
     nombre,
     cantidad,
+    porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
     color: COLORES_ESTADO[nombre] ?? "#cbd5e1",
   }));
+
+  return { datos, total };
 }
 
-function calcularServiciosPorMes(servicios: Servicio[]) {
+function esServicioTercero(servicio: Servicio): boolean {
+  return servicio.unidades_terceros !== null;
+}
+
+// Servicios propios vs. terceros, comparados mes a mes (últimos 6 meses)
+function calcularServiciosPropiosVsTercerosPorMes(servicios: Servicio[]) {
   const hoy = new Date();
-  const meses: { clave: string; nombre: string; cantidad: number }[] = [];
+  const meses: { clave: string; nombre: string; propios: number; terceros: number }[] = [];
 
   for (let i = 5; i >= 0; i--) {
     const fecha = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
     meses.push({
       clave: `${fecha.getFullYear()}-${fecha.getMonth()}`,
       nombre: NOMBRES_MESES[fecha.getMonth()],
-      cantidad: 0,
+      propios: 0,
+      terceros: 0,
     });
   }
 
@@ -67,7 +87,13 @@ function calcularServiciosPorMes(servicios: Servicio[]) {
     const fecha = new Date(servicio.fecha);
     const clave = `${fecha.getFullYear()}-${fecha.getMonth()}`;
     const mes = meses.find((m) => m.clave === clave);
-    if (mes) mes.cantidad++;
+    if (!mes) continue;
+
+    if (esServicioTercero(servicio)) {
+      mes.terceros++;
+    } else {
+      mes.propios++;
+    }
   }
 
   return meses;
@@ -232,38 +258,59 @@ function IconoUnidad() {
   );
 }
 
-function GraficoServiciosPorEstado({ datos }: { datos: ReturnType<typeof calcularServiciosPorEstado> }) {
+function GraficoRegistrosSemana({
+  datos,
+  total,
+}: {
+  datos: ReturnType<typeof calcularRegistrosSemana>["datos"];
+  total: number;
+}) {
   if (datos.length === 0) {
     return (
       <div className="flex h-[260px] items-center justify-center text-sm text-gray-400">
-        Sin datos suficientes.
+        Sin registros esta semana.
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <PieChart>
-        <Pie
-          data={datos}
-          dataKey="cantidad"
-          nameKey="nombre"
-          innerRadius={60}
-          outerRadius={90}
-          paddingAngle={2}
-        >
-          {datos.map((entrada) => (
-            <Cell key={entrada.nombre} fill={entrada.color} />
-          ))}
-        </Pie>
-        <Tooltip />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="relative">
+      <ResponsiveContainer width="99%" height={260}>
+        <PieChart>
+          <Pie
+            data={datos}
+            dataKey="cantidad"
+            nameKey="nombre"
+            innerRadius={60}
+            outerRadius={90}
+            paddingAngle={2}
+            label={({ percent }) => `${Math.round((percent ?? 0) * 100)}%`}
+            labelLine={false}
+            isAnimationActive={false}
+          >
+            {datos.map((entrada) => (
+              <Cell key={entrada.nombre} fill={entrada.color} />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+
+      {/* Total superpuesto en el centro de la dona (posicionado sobre el gráfico, no dentro de él) */}
+      <div className="pointer-events-none absolute left-1/2 top-[108px] -translate-x-1/2 -translate-y-1/2 text-center">
+        <p className="text-3xl font-bold text-[#18193B]">{total}</p>
+        <p className="text-[10px] font-semibold tracking-wide text-gray-400">TOTAL SEMANA</p>
+      </div>
+    </div>
   );
 }
 
-function GraficoServiciosPorMes({ datos }: { datos: ReturnType<typeof calcularServiciosPorMes> }) {
+function GraficoServiciosPropiosVsTerceros({
+  datos,
+}: {
+  datos: ReturnType<typeof calcularServiciosPropiosVsTercerosPorMes>;
+}) {
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={datos}>
@@ -271,7 +318,9 @@ function GraficoServiciosPorMes({ datos }: { datos: ReturnType<typeof calcularSe
         <XAxis dataKey="nombre" tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
         <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} axisLine={false} tickLine={false} />
         <Tooltip />
-        <Bar dataKey="cantidad" fill={COLOR_EN_PROCESO} radius={[6, 6, 0, 0]} />
+        <Legend />
+        <Bar dataKey="propios" name="Propios" fill={COLOR_EN_PROCESO} radius={[6, 6, 0, 0]} isAnimationActive={false} />
+        <Bar dataKey="terceros" name="Terceros" fill={COLOR_COMPLETADO} radius={[6, 6, 0, 0]} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -467,15 +516,15 @@ function DashboardPage() {
 
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-semibold text-[#18193B]">Servicios por estado</h3>
-          <p className="mt-1 text-sm text-gray-500">Distribución del total de servicios registrados</p>
-          <GraficoServiciosPorEstado datos={calcularServiciosPorEstado(servicios)} />
+          <h3 className="text-base font-semibold text-[#18193B]">Registros de la semana</h3>
+          <p className="mt-1 text-sm text-gray-500">Servicios de los últimos 7 días, por estado</p>
+          <GraficoRegistrosSemana {...calcularRegistrosSemana(servicios)} />
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-base font-semibold text-[#18193B]">Servicios por mes</h3>
-          <p className="mt-1 text-sm text-gray-500">Últimos 6 meses de operación</p>
-          <GraficoServiciosPorMes datos={calcularServiciosPorMes(servicios)} />
+          <h3 className="text-base font-semibold text-[#18193B]">Servicios propios vs. terceros por mes</h3>
+          <p className="mt-1 text-sm text-gray-500">Comparativo de los últimos 6 meses</p>
+          <GraficoServiciosPropiosVsTerceros datos={calcularServiciosPropiosVsTercerosPorMes(servicios)} />
         </div>
       </section>
 
