@@ -53,7 +53,19 @@ export function NuevoServicioModal({
   const [idUnidad, setIdUnidad] = useState("");
   const [idConductor, setIdConductor] = useState("");
 
-  const [correoNotificacion, setCorreoNotificacion] = useState("");
+  const [correosNotificacion, setCorreosNotificacion] = useState<string[]>([""]);
+
+  function actualizarCorreo(indice: number, valor: string) {
+    setCorreosNotificacion((actual) => actual.map((c, i) => (i === indice ? valor : c)));
+  }
+
+  function agregarCorreo() {
+    setCorreosNotificacion((actual) => [...actual, ""]);
+  }
+
+  function quitarCorreo(indice: number) {
+    setCorreosNotificacion((actual) => actual.filter((_, i) => i !== indice));
+  }
   // ==========================================================
   // DATOS TERCERO
   // ==========================================================
@@ -192,6 +204,25 @@ export function NuevoServicioModal({
 
 
   // ==========================================================
+  // Envía el correo del servicio a cada dirección cargada, sin
+  // interrumpir el flujo si alguna falla individualmente.
+  // ==========================================================
+
+  async function enviarCorreosNotificacion(idService: number) {
+    const correosValidos = correosNotificacion
+      .map((c) => c.trim())
+      .filter((c) => c.length > 0);
+
+    for (const correo of correosValidos) {
+      try {
+        await enviarCorreoServicio(idService, correo);
+      } catch (error) {
+        console.error(`No se pudo enviar el correo a ${correo}:`, error);
+      }
+    }
+  }
+
+  // ==========================================================
   // SUBMIT
   // ==========================================================
 
@@ -255,10 +286,7 @@ export function NuevoServicioModal({
 
 
         const servicioCreado = await crearServicioInterno(payload);
-
-            if (correoNotificacion.trim()) {
-              await enviarCorreoServicio(servicioCreado.id_service, correoNotificacion.trim());
-            }
+        await enviarCorreosNotificacion(servicioCreado.id_service);
       }
 
 
@@ -386,11 +414,7 @@ export function NuevoServicioModal({
 
 
         const servicioCreado = await crearServicioTercero(payload);
-
-            if (correoNotificacion.trim()) {
-              await enviarCorreoServicio(servicioCreado.id_service, correoNotificacion.trim());
-            }
-
+        await enviarCorreosNotificacion(servicioCreado.id_service);
       }
 
 
@@ -1021,17 +1045,43 @@ export function NuevoServicioModal({
           )}
 
           <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
-            Notificar por correo
-          </label>
-          <input
-            type="email"
-            value={correoNotificacion}
-            onChange={(e) => setCorreoNotificacion(e.target.value)}
-            className={inputClass}
-            placeholder="correo@ejemplo.com (opcional)"
-          />
-        </div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Notificar por correo
+            </label>
+
+            <div className="space-y-2">
+              {correosNotificacion.map((correo, indice) => (
+                <div key={indice} className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={correo}
+                    onChange={(e) => actualizarCorreo(indice, e.target.value)}
+                    className={inputClass}
+                    placeholder="correo@ejemplo.com (opcional)"
+                  />
+
+                  {correosNotificacion.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => quitarCorreo(indice)}
+                      className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-red-500"
+                      title="Quitar correo"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={agregarCorreo}
+              className="mt-2 text-xs font-semibold text-blue-600 hover:underline"
+            >
+              + Agregar otro correo
+            </button>
+          </div>
           {/* FOOTER */}
 
           <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
