@@ -38,12 +38,18 @@ const NOMBRES_MESES = [
 // Registros de la semana (últimos 7 días) agrupados por estado, con % y total
 function calcularRegistrosSemana(servicios: Servicio[]) {
   const hoy = new Date();
-  const haceSieteDias = new Date(hoy);
-  haceSieteDias.setDate(hoy.getDate() - 7);
+
+  // Lunes de esta semana (hora local, sin componente de hora)
+  const diaSemana = hoy.getDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+  const diasDesdeLunes = (diaSemana + 6) % 7;
+  const lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - diasDesdeLunes);
+
+  // Sábado de esta misma semana (lunes + 5 días), fin del día
+  const sabado = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 5, 23, 59, 59, 999);
 
   const serviciosSemana = servicios.filter((servicio) => {
     const fecha = new Date(servicio.fecha);
-    return fecha >= haceSieteDias && fecha <= hoy;
+    return fecha >= lunes && fecha <= sabado;
   });
 
   const conteo = new Map<string, number>();
@@ -517,7 +523,7 @@ function DashboardPage() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-base font-semibold text-[#18193B]">Registros de la semana</h3>
-          <p className="mt-1 text-sm text-gray-500">Servicios de los últimos 7 días, por estado</p>
+          <p className="mt-1 text-sm text-gray-500">Servicios de esta semana (lunes a sábado), por estado</p>
           <GraficoRegistrosSemana {...calcularRegistrosSemana(servicios)} />
         </div>
 
