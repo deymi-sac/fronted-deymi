@@ -1,6 +1,7 @@
 export const ROLES = {
   ADMIN: 1,
   COORDINADOR_DE_TRANSPORTE: 2,
+  SISTEMAS: 3,
 } as const;
 
 export interface UsuarioActual {

@@ -40,8 +40,8 @@ function App() {
           <Route path="/asignacion-unidades" element={<ServicesPage />} />
           <Route path="/transportistas" element={<TransportistasPage />} />
           <Route path="/documentos" element={<DocumentosPage />} />
-          {/* Solo administrador (ahora dentro del layout, hereda sidebar y topbar) */}
-          <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN]} />}>
+          {/* Solo administrador y sistemas (ahora dentro del layout, hereda sidebar y topbar) */}
+          <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.SISTEMAS]} />}>
             <Route path="/usuarios" element={<UsuariosPage />} />
             <Route path="/usuarios/nuevo" element={<CrearUsuarioPage />} />
           </Route>

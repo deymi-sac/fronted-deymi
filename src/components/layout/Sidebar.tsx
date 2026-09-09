@@ -32,7 +32,7 @@ interface SidebarProps {
 
 export function Sidebar({ colapsado, onToggle, abiertoMobile, onCerrarMobile }: SidebarProps) {
   const usuario = getCurrentUser();
-  const esAdministrador = usuario?.id_rol === ROLES.ADMIN;
+  const esAdministrador = usuario?.id_rol === ROLES.ADMIN || usuario?.id_rol === ROLES.SISTEMAS;
   const { cerrarSesion } = useLogout();
 
   // En mobile el sidebar siempre se muestra expandido (es un drawer), el
