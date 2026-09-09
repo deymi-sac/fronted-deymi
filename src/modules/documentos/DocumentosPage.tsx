@@ -8,16 +8,19 @@ import {
 } from "./useDocumentos";
 import { CrearDocumentoModal } from "./CrearDocumentoModal";
 import { AlertTriangle, FileWarning, PlusCircle, Trash2 } from "lucide-react";
+import { formatearFecha } from "../../utils/fecha.utils";
 
-function formatearFecha(fecha: string) {
-  return new Date(fecha).toLocaleDateString("es-PE");
-}
+// Días que faltan para el vencimiento, comparando solo el calendario (sin
+// horas) para no correrse un día por la zona horaria del navegador.
+function diasParaVencer(fechaISO: string) {
+  const soloFecha = fechaISO.split("T")[0];
+  const [year, month, day] = soloFecha.split("-").map(Number);
+  const venc = new Date(year, month - 1, day);
 
-function diasParaVencer(fecha: string) {
   const hoy = new Date();
-  const venc = new Date(fecha);
-  const dias = Math.ceil((venc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-  return dias;
+  hoy.setHours(0, 0, 0, 0);
+
+  return Math.round((venc.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export default function DocumentosPage() {
