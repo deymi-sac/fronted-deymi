@@ -66,6 +66,6 @@ export function useEliminarDocumentoUnidad() {
   });
 }
 
-export function useProximosAVencer(dias = 30) {
-  return useQuery({ queryKey: ["proximos-a-vencer", dias], queryFn: () => obtenerProximosAVencer(dias) });
+export function useProximosAVencer() {
+  return useQuery({ queryKey: ["proximos-a-vencer"], queryFn: () => obtenerProximosAVencer() });
 }

@@ -89,8 +89,8 @@ export async function eliminarDocumentoUnidad(id: number): Promise<void> {
   await api.delete(`/documentos/unidad/${id}`);
 }
 
-export async function obtenerProximosAVencer(dias = 30): Promise<ProximosAVencerResponse> {
-  const { data } = await api.get<ProximosAVencerResponse>("/documentos/proximos-a-vencer", { params: { dias } });
+export async function obtenerProximosAVencer(): Promise<ProximosAVencerResponse> {
+  const { data } = await api.get<ProximosAVencerResponse>("/documentos/proximos-a-vencer");
   return data;
 }
 

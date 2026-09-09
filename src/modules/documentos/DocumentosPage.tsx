@@ -29,7 +29,7 @@ export default function DocumentosPage() {
 
   const docsConductor = useDocumentosConductor();
   const docsUnidad = useDocumentosUnidad();
-  const proximos = useProximosAVencer(30);
+  const proximos = useProximosAVencer();
   const eliminarConductor = useEliminarDocumentoConductor();
   const eliminarUnidad = useEliminarDocumentoUnidad();
 
@@ -64,7 +64,7 @@ export default function DocumentosPage() {
             <AlertTriangle className="mt-0.5 flex-shrink-0 text-amber-500" size={20} />
             <div className="flex-1">
               <h3 className="text-sm font-bold text-amber-900">
-                {totalPorVencer} documento{totalPorVencer !== 1 ? "s" : ""} por vencer en los próximos 30 días
+                {totalPorVencer} documento{totalPorVencer !== 1 ? "s" : ""} dentro de su ventana de aviso
               </h3>
               <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
                 {proximos.data?.conductores.map((d) => (
