@@ -48,7 +48,7 @@ function formatearFechaLocal(fecha: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-// Registros de la semana (lunes a sábado) agrupados por estado, con % y total
+// Registros de la semana (lunes a domingo) agrupados por estado, con % y total
 function calcularRegistrosSemana(servicios: Servicio[]) {
   const hoy = new Date();
 
@@ -57,15 +57,15 @@ function calcularRegistrosSemana(servicios: Servicio[]) {
   const diasDesdeLunes = (diaSemana + 6) % 7;
   const lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - diasDesdeLunes);
 
-  // Sábado de esta misma semana (lunes + 5 días)
-  const sabado = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 5);
+  // Domingo de esta misma semana (lunes + 6 días)
+  const domingo = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 6);
 
   const lunesStr = formatearFechaLocal(lunes);
-  const sabadoStr = formatearFechaLocal(sabado);
+  const domingoStr = formatearFechaLocal(domingo);
 
   const serviciosSemana = servicios.filter((servicio) => {
     const fechaStr = soloFechaISO(servicio.fecha);
-    return fechaStr >= lunesStr && fechaStr <= sabadoStr;
+    return fechaStr >= lunesStr && fechaStr <= domingoStr;
   });
 
   const conteo = new Map<string, number>();
@@ -539,7 +539,7 @@ function DashboardPage() {
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h3 className="text-base font-semibold text-[#18193B]">Registros de la semana</h3>
-          <p className="mt-1 text-sm text-gray-500">Servicios de esta semana (lunes a sábado), por estado</p>
+          <p className="mt-1 text-sm text-gray-500">Servicios de esta semana (lunes a domingo), por estado</p>
           <GraficoRegistrosSemana {...calcularRegistrosSemana(servicios)} />
         </div>
 
