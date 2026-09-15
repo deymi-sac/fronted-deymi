@@ -35,7 +35,20 @@ const NOMBRES_MESES = [
   "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
 ];
 
-// Registros de la semana (últimos 7 días) agrupados por estado, con % y total
+// Extrae "YYYY-MM-DD" de una fecha ISO sin pasar por conversión de zona
+// horaria (evita el bug de "se corre un día/mes" al comparar con Date).
+function soloFechaISO(fechaISO: string): string {
+  return fechaISO.split("T")[0];
+}
+
+function formatearFechaLocal(fecha: Date): string {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, "0");
+  const d = String(fecha.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// Registros de la semana (lunes a sábado) agrupados por estado, con % y total
 function calcularRegistrosSemana(servicios: Servicio[]) {
   const hoy = new Date();
 
@@ -44,12 +57,15 @@ function calcularRegistrosSemana(servicios: Servicio[]) {
   const diasDesdeLunes = (diaSemana + 6) % 7;
   const lunes = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - diasDesdeLunes);
 
-  // Sábado de esta misma semana (lunes + 5 días), fin del día
-  const sabado = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 5, 23, 59, 59, 999);
+  // Sábado de esta misma semana (lunes + 5 días)
+  const sabado = new Date(lunes.getFullYear(), lunes.getMonth(), lunes.getDate() + 5);
+
+  const lunesStr = formatearFechaLocal(lunes);
+  const sabadoStr = formatearFechaLocal(sabado);
 
   const serviciosSemana = servicios.filter((servicio) => {
-    const fecha = new Date(servicio.fecha);
-    return fecha >= lunes && fecha <= sabado;
+    const fechaStr = soloFechaISO(servicio.fecha);
+    return fechaStr >= lunesStr && fechaStr <= sabadoStr;
   });
 
   const conteo = new Map<string, number>();
@@ -90,8 +106,8 @@ function calcularServiciosPropiosVsTercerosPorMes(servicios: Servicio[]) {
   }
 
   for (const servicio of servicios) {
-    const fecha = new Date(servicio.fecha);
-    const clave = `${fecha.getFullYear()}-${fecha.getMonth()}`;
+    const [anioStr, mesStr] = soloFechaISO(servicio.fecha).split("-");
+    const clave = `${Number(anioStr)}-${Number(mesStr) - 1}`;
     const mes = meses.find((m) => m.clave === clave);
     if (!mes) continue;
 
