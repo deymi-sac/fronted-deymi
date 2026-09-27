@@ -17,8 +17,10 @@ export interface UsuarioActual {
 /** Roles con permiso de escritura en el módulo Almacén (el resto, ej. Facturación, solo lectura). */
 export function puedeOperarAlmacen(usuario: UsuarioActual | null): boolean {
   if (!usuario) return false;
-  return [ROLES.ADMIN, ROLES.SISTEMAS, ROLES.COORDINADOR_DE_ALMACEN].includes(
-    usuario.id_rol as (typeof ROLES)[keyof typeof ROLES]
+  return (
+    usuario.id_rol === ROLES.ADMIN ||
+    usuario.id_rol === ROLES.SISTEMAS ||
+    usuario.id_rol === ROLES.COORDINADOR_DE_ALMACEN
   );
 }
 
