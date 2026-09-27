@@ -12,6 +12,11 @@ import {
   Building2,
   FileText,
   Users,
+  Warehouse,
+  ArrowLeftRight,
+  Package,
+  MapPin,
+  Receipt,
 } from "lucide-react";
 
 const menuItems = [
@@ -21,6 +26,15 @@ const menuItems = [
   { label: "Conductores", path: "/conductores", icon: UserRound },
   { label: "Transportistas", path: "/transportistas", icon: Building2 },
   { label: "Documentos", path: "/documentos", icon: FileText },
+];
+
+const menuAlmacen = [
+  { label: "Dashboard", path: "/almacen/dashboard", icon: LayoutDashboard },
+  { label: "Movimientos", path: "/almacen/movimientos", icon: ArrowLeftRight },
+  { label: "Clientes", path: "/almacen/clientes", icon: Building2 },
+  { label: "Productos", path: "/almacen/productos", icon: Package },
+  { label: "Ubicaciones", path: "/almacen/ubicaciones", icon: MapPin },
+  { label: "Facturación", path: "/almacen/facturacion", icon: Receipt },
 ];
 
 interface SidebarProps {
@@ -33,6 +47,9 @@ interface SidebarProps {
 export function Sidebar({ colapsado, onToggle, abiertoMobile, onCerrarMobile }: SidebarProps) {
   const usuario = getCurrentUser();
   const esAdministrador = usuario?.id_rol === ROLES.ADMIN || usuario?.id_rol === ROLES.SISTEMAS;
+  const accedeTransporte = esAdministrador || usuario?.id_rol === ROLES.COORDINADOR_DE_TRANSPORTE;
+  const accedeAlmacen =
+    esAdministrador || usuario?.id_rol === ROLES.COORDINADOR_DE_ALMACEN || usuario?.id_rol === ROLES.FACTURACION;
   const { cerrarSesion } = useLogout();
 
   // En mobile el sidebar siempre se muestra expandido (es un drawer), el
@@ -78,30 +95,65 @@ export function Sidebar({ colapsado, onToggle, abiertoMobile, onCerrarMobile }: 
 
       {/* Navegación */}
       <nav className="flex-1 overflow-y-auto px-3">
-        <div className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                title={!mostrarTexto ? item.label : undefined}
-                onClick={onCerrarMobile}
-                className={({ isActive }) => linkClass(isActive)}
-              >
-                {({ isActive }) => (
-                  <>
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-blue-400" />
-                    )}
-                    <Icon size={18} className="flex-shrink-0" />
-                    {mostrarTexto && <span>{item.label}</span>}
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
-        </div>
+        {accedeTransporte && (
+          <div className="space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  title={!mostrarTexto ? item.label : undefined}
+                  onClick={onCerrarMobile}
+                  className={({ isActive }) => linkClass(isActive)}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-blue-400" />
+                      )}
+                      <Icon size={18} className="flex-shrink-0" />
+                      {mostrarTexto && <span>{item.label}</span>}
+                    </>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        )}
+
+        {accedeAlmacen && (
+          <div className={`space-y-1 ${accedeTransporte ? "mt-4 border-t border-white/10 pt-4" : ""}`}>
+            {mostrarTexto && (
+              <div className="flex items-center gap-2 px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <Warehouse size={14} />
+                Almacén
+              </div>
+            )}
+            {menuAlmacen.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  title={!mostrarTexto ? item.label : undefined}
+                  onClick={onCerrarMobile}
+                  className={({ isActive }) => linkClass(isActive)}
+                >
+                  {({ isActive }) => (
+                    <>
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-blue-400" />
+                      )}
+                      <Icon size={18} className="flex-shrink-0" />
+                      {mostrarTexto && <span>{item.label}</span>}
+                    </>
+                  )}
+                </NavLink>
+              );
+            })}
+          </div>
+        )}
 
         {esAdministrador && (
           <div className="mt-4 border-t border-white/10 pt-4">

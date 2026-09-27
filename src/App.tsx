@@ -17,6 +17,12 @@ import { ConductoresPage } from "./modules/conductores/ConductoresPage";
 
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import TransportistasPage from "./modules/transportistas/TransportistasPage";
+import AlmacenDashboardPage from "./modules/almacen/AlmacenDashboardPage";
+import AlmacenMovimientosPage from "./modules/almacen/AlmacenMovimientosPage";
+import AlmacenClientesPage from "./modules/almacen/AlmacenClientesPage";
+import AlmacenProductosPage from "./modules/almacen/AlmacenProductosPage";
+import AlmacenUbicacionesPage from "./modules/almacen/AlmacenUbicacionesPage";
+import AlmacenFacturacionPage from "./modules/almacen/AlmacenFacturacionPage";
 
 function App() {
   return (
@@ -44,6 +50,23 @@ function App() {
           <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.SISTEMAS]} />}>
             <Route path="/usuarios" element={<UsuariosPage />} />
             <Route path="/usuarios/nuevo" element={<CrearUsuarioPage />} />
+          </Route>
+
+          {/* Almacén: Administrador, Sistemas, Coordinador de Almacén y Facturación (el backend ya
+              restringe qué puede escribir cada uno; aquí solo se controla quién ve el módulo) */}
+          <Route
+            element={
+              <RoleRoute
+                allowedRoles={[ROLES.ADMIN, ROLES.SISTEMAS, ROLES.COORDINADOR_DE_ALMACEN, ROLES.FACTURACION]}
+              />
+            }
+          >
+            <Route path="/almacen/dashboard" element={<AlmacenDashboardPage />} />
+            <Route path="/almacen/movimientos" element={<AlmacenMovimientosPage />} />
+            <Route path="/almacen/clientes" element={<AlmacenClientesPage />} />
+            <Route path="/almacen/productos" element={<AlmacenProductosPage />} />
+            <Route path="/almacen/ubicaciones" element={<AlmacenUbicacionesPage />} />
+            <Route path="/almacen/facturacion" element={<AlmacenFacturacionPage />} />
           </Route>
 
         </Route>

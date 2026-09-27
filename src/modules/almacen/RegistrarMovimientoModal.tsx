@@ -1,0 +1,329 @@
+import { useMemo, useState } from "react";
+import { isAxiosError } from "axios";
+import { useClientesAlmacen, useDivisiones, useProductosDeCliente, useCrearMovimiento } from "./useAlmacen";
+import { inputClass } from "./CrearClienteModal";
+import type { ExcesoCapacidadInfo } from "./almacen.api";
+
+const MOTIVOS_INGRESO = ["N° solicitud de traslado", "Traspaso interno dentro de ZED"];
+const MOTIVOS_SALIDA = ["Nacionalizada", "Reexpedición marítima", "Reexpedición terrestre", "Traspaso interno dentro de ZED"];
+
+export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
+  const { data: clientes } = useClientesAlmacen(false);
+  const { data: divisiones } = useDivisiones();
+  const crearMovimiento = useCrearMovimiento();
+
+  const [tipo, setTipo] = useState<"Ingreso" | "Salida">("Ingreso");
+  const [motivo, setMotivo] = useState(MOTIVOS_INGRESO[0]);
+  const [idCliente, setIdCliente] = useState<number | "">("");
+  const [idProducto, setIdProducto] = useState<number | "">("");
+  const [modo, setModo] = useState<"Contenedor" | "Carga suelta">("Contenedor");
+  const [numContenedor, setNumContenedor] = useState("");
+  const [numDeclaracion, setNumDeclaracion] = useState("");
+  const [cantidad, setCantidad] = useState("");
+  const [unidadMedida, setUnidadMedida] = useState("Pallet");
+  const [cantidadBultos, setCantidadBultos] = useState("");
+  const [liberaPallet, setLiberaPallet] = useState(true);
+  const [idDivision, setIdDivision] = useState<number | "">("");
+  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
+  const [observaciones, setObservaciones] = useState("");
+
+  const [error, setError] = useState<string | null>(null);
+  const [exceso, setExceso] = useState<ExcesoCapacidadInfo | null>(null);
+
+  const { data: productosCliente } = useProductosDeCliente(idCliente === "" ? null : idCliente);
+
+  const motivos = tipo === "Ingreso" ? MOTIVOS_INGRESO : MOTIVOS_SALIDA;
+
+  function cambiarTipo(nuevo: "Ingreso" | "Salida") {
+    setTipo(nuevo);
+    setMotivo(nuevo === "Ingreso" ? MOTIVOS_INGRESO[0] : MOTIVOS_SALIDA[0]);
+    setExceso(null);
+  }
+
+  const divisionSeleccionada = useMemo(
+    () => divisiones?.find((d) => d.id_division === idDivision) ?? null,
+    [divisiones, idDivision]
+  );
+
+  function construirPayload(forzar: boolean) {
+    return {
+      tipo,
+      motivo,
+      id_cliente_almacen: Number(idCliente),
+      id_producto: idProducto === "" ? undefined : Number(idProducto),
+      id_division: Number(idDivision),
+      modo,
+      num_contenedor: numContenedor.trim() || undefined,
+      num_declaracion: numDeclaracion.trim() || undefined,
+      cantidad: Number(cantidad),
+      unidad_medida: unidadMedida,
+      cantidad_bultos: cantidadBultos ? Number(cantidadBultos) : undefined,
+      libera_pallet: tipo === "Salida" ? liberaPallet : undefined,
+      fecha,
+      observaciones: observaciones.trim() || undefined,
+      forzar_exceso_capacidad: forzar,
+    };
+  }
+
+  function handleSubmit(e: React.FormEvent, forzar = false) {
+    e.preventDefault();
+    setError(null);
+    if (!idCliente || !idDivision || !cantidad || Number(cantidad) <= 0) {
+      setError("Cliente, división y cantidad (mayor a 0) son obligatorios.");
+      return;
+    }
+
+    crearMovimiento.mutate(construirPayload(forzar), {
+      onSuccess: onClose,
+      onError: (err) => {
+        if (isAxiosError(err) && err.response?.status === 409 && err.response.data?.requiere_confirmacion) {
+          setExceso(err.response.data as ExcesoCapacidadInfo);
+          return;
+        }
+        setError(isAxiosError(err) ? err.response?.data?.error ?? "No se pudo registrar el movimiento" : "No se pudo registrar el movimiento");
+      },
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 py-10">
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="border-b border-slate-200 px-6 py-5">
+          <h2 className="text-lg font-semibold text-slate-800">Registrar movimiento</h2>
+          <p className="mt-1 text-sm text-slate-500">Ingreso o salida de mercadería del almacén.</p>
+        </div>
+
+        <form onSubmit={(e) => handleSubmit(e, false)} className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+          <div>
+            <span className="mb-1.5 block text-sm font-medium text-slate-600">Tipo de movimiento</span>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => cambiarTipo("Ingreso")}
+                className={`rounded-xl border py-3 text-sm font-semibold transition ${
+                  tipo === "Ingreso" ? "border-2 border-green-600 bg-green-50 text-green-700" : "border-slate-200 text-slate-500"
+                }`}
+              >
+                Ingreso
+              </button>
+              <button
+                type="button"
+                onClick={() => cambiarTipo("Salida")}
+                className={`rounded-xl border py-3 text-sm font-semibold transition ${
+                  tipo === "Salida" ? "border-2 border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-500"
+                }`}
+              >
+                Salida
+              </button>
+            </div>
+          </div>
+
+          <Campo label={`Motivo de ${tipo.toLowerCase()} *`}>
+            <select value={motivo} onChange={(e) => setMotivo(e.target.value)} className={inputClass}>
+              {motivos.map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+            </select>
+          </Campo>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Campo label="Cliente *">
+              <select
+                value={idCliente}
+                onChange={(e) => {
+                  setIdCliente(e.target.value ? Number(e.target.value) : "");
+                  setIdProducto("");
+                }}
+                className={inputClass}
+              >
+                <option value="">Selecciona...</option>
+                {clientes?.map((c) => (
+                  <option key={c.id_cliente_almacen} value={c.id_cliente_almacen}>
+                    {c.razon_social}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            <Campo label="Producto">
+              <select value={idProducto} onChange={(e) => setIdProducto(e.target.value ? Number(e.target.value) : "")} className={inputClass}>
+                <option value="">Selecciona...</option>
+                {productosCliente?.map((p) => (
+                  <option key={p.id_producto} value={p.id_producto}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          </div>
+
+          <div>
+            <span className="mb-1.5 block text-sm font-medium text-slate-600">Modo</span>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setModo("Contenedor")}
+                className={`rounded-xl border py-2.5 text-sm font-medium transition ${
+                  modo === "Contenedor" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
+                }`}
+              >
+                Contenedor
+              </button>
+              <button
+                type="button"
+                onClick={() => setModo("Carga suelta")}
+                className={`rounded-xl border py-2.5 text-sm font-medium transition ${
+                  modo === "Carga suelta" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
+                }`}
+              >
+                Carga suelta
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Campo label="N° de contenedor">
+              <input value={numContenedor} onChange={(e) => setNumContenedor(e.target.value)} className={inputClass} placeholder="HLBU2680426" />
+            </Campo>
+            <Campo label="N° Declaración / Traspaso">
+              <input value={numDeclaracion} onChange={(e) => setNumDeclaracion(e.target.value)} className={inputClass} placeholder="Texto libre" />
+            </Campo>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <Campo label="Cantidad *">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={cantidad}
+                onChange={(e) => {
+                  setCantidad(e.target.value);
+                  setExceso(null);
+                }}
+                className={inputClass}
+              />
+            </Campo>
+            <Campo label="Unidad">
+              <select value={unidadMedida} onChange={(e) => setUnidadMedida(e.target.value)} className={inputClass}>
+                <option>Pallet</option>
+                <option>Cajas</option>
+                <option>Und</option>
+                <option>Saco</option>
+              </select>
+            </Campo>
+            <Campo label="Cant. bultos">
+              <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
+            </Campo>
+          </div>
+
+          {tipo === "Salida" && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-amber-800">¿Esta salida libera el pallet?</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLiberaPallet(true)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      liberaPallet ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
+                    }`}
+                  >
+                    Sí
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLiberaPallet(false)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      !liberaPallet ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
+                    }`}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs leading-relaxed text-amber-800">
+                "No" (ej. retiro de solo cajas) descuenta los bultos pero el pallet sigue ocupando su posición y se sigue
+                facturando. Solo "Sí" libera la posición y descuenta el pallet.
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <Campo label="División *">
+              <select value={idDivision} onChange={(e) => { setIdDivision(e.target.value ? Number(e.target.value) : ""); setExceso(null); }} className={inputClass}>
+                <option value="">Selecciona...</option>
+                {divisiones?.map((d) => (
+                  <option key={d.id_division} value={d.id_division}>
+                    {d.nombre}
+                  </option>
+                ))}
+              </select>
+              {divisionSeleccionada?.capacidad_maxima && (
+                <span className="mt-1 text-xs text-slate-400">
+                  Ocupación actual: {divisionSeleccionada.ocupacion_actual ?? 0}/{divisionSeleccionada.capacidad_maxima} pallets
+                </span>
+              )}
+            </Campo>
+            <Campo label="Fecha *">
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
+            </Campo>
+          </div>
+
+          <Campo label="Observaciones">
+            <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className={`${inputClass} h-16 resize-none`} />
+          </Campo>
+
+          {exceso && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-amber-800">La división está al límite de su capacidad</p>
+              <p className="mt-1 text-xs text-amber-800">
+                Ocupación actual: {exceso.ocupacion_actual} / {exceso.capacidad_maxima} pallets. Esta cantidad ({exceso.cantidad_solicitada})
+                la superaría. Se puede registrar igual, pero queda marcado para revisión.
+              </p>
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, true)}
+                className="mt-2 rounded-lg border border-amber-800 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+              >
+                Registrar de todas formas
+              </button>
+            </div>
+          )}
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-700">Validación y aprobación</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Este movimiento queda registrado como aprobado por ti, según el flujo confirmado con almacén (el Coordinador
+              valida por correo antes de ingresarlo al sistema).
+            </p>
+          </div>
+        </form>
+
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={(e) => handleSubmit(e, false)}
+            disabled={crearMovimiento.isPending}
+            className="rounded-lg bg-[#18193B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#242550] disabled:opacity-50"
+          >
+            {crearMovimiento.isPending ? "Registrando..." : `Registrar ${tipo.toLowerCase()}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-slate-600">{label}</span>
+      {children}
+    </label>
+  );
+}
