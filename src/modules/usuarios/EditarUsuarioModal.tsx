@@ -79,7 +79,10 @@ export function EditarUsuarioModal({ usuario, onClose }: EditarUsuarioModalProps
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           >
             <option value={1}>Administrador</option>
+            <option value={3}>Sistemas</option>
             <option value={2}>Coordinador de transporte</option>
+            <option value={4}>Coordinador de Almacén</option>
+            <option value={5}>Facturación</option>
           </select>
 
           {mensajeError && <p className="text-sm text-red-500">{mensajeError}</p>}

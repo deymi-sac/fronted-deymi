@@ -86,8 +86,11 @@ export function CrearUsuarioPage() {
           onChange={(e) => setIdRol(Number(e.target.value))}
           className="mb-3 w-full rounded-md border border-white/30 bg-white/10 px-4 py-2 text-white focus:outline-none focus:border-white"
         >
-          <option value={2} className="text-black">Coordinador de transporte</option>
           <option value={1} className="text-black">Administrador</option>
+          <option value={3} className="text-black">Sistemas</option>
+          <option value={2} className="text-black">Coordinador de transporte</option>
+          <option value={4} className="text-black">Coordinador de Almacén</option>
+          <option value={5} className="text-black">Facturación</option>
         </select>
 
         <input
