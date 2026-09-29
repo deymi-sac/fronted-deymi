@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { isAxiosError } from "axios";
-import { Plus } from "lucide-react";
-import { useActualizarClienteAlmacen, useCrearProductoAlmacen, useProductosDeCliente } from "./useAlmacen";
+import { Plus, Trash2 } from "lucide-react";
+import { useActualizarClienteAlmacen, useCrearProductoAlmacen, useEliminarProductoAlmacen, useProductosDeCliente } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
 import type { ClienteAlmacen } from "./almacen.api";
 
@@ -9,6 +9,7 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
   const actualizarCliente = useActualizarClienteAlmacen();
   const { data: productos } = useProductosDeCliente(cliente.id_cliente_almacen);
   const crearProducto = useCrearProductoAlmacen();
+  const eliminarProducto = useEliminarProductoAlmacen();
 
   const [razonSocial, setRazonSocial] = useState(cliente.razon_social);
   const [ruc, setRuc] = useState(cliente.ruc ?? "");
@@ -60,6 +61,19 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
     );
   }
 
+  function handleEliminarProducto(idProducto: number, nombre: string) {
+    const confirmar = window.confirm(`¿Eliminar "${nombre}"? Si ya tiene movimientos registrados, se marcará como inactivo en vez de borrarse.`);
+    if (!confirmar) return;
+    setErrorProducto(null);
+    eliminarProducto.mutate(idProducto, {
+      onError: (err) => {
+        setErrorProducto(
+          isAxiosError(err) ? err.response?.data?.error ?? "No se pudo eliminar el producto" : "No se pudo eliminar el producto"
+        );
+      },
+    });
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
@@ -109,35 +123,46 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
           <h3 className="mb-3 text-sm font-semibold text-slate-700">Productos de {cliente.razon_social}</h3>
           <ul className="mb-3 flex flex-col gap-1.5">
             {(productos ?? []).map((p) => (
-              <li key={p.id_producto} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                <span>{p.nombre}</span>
+              <li key={p.id_producto} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                <span className="flex-1">{p.nombre}</span>
                 <span className="text-xs text-slate-400">{p.unidad_medida}</span>
+                <button
+                  type="button"
+                  title="Eliminar producto"
+                  onClick={() => handleEliminarProducto(p.id_producto, p.nombre)}
+                  disabled={eliminarProducto.isPending}
+                  className="rounded-md p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+                </button>
               </li>
             ))}
             {productos?.length === 0 && <p className="text-sm text-slate-400">Sin productos registrados aún.</p>}
           </ul>
           {errorProducto && <p className="mb-2 text-sm text-red-600">{errorProducto}</p>}
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <input
               value={nuevoProducto}
               onChange={(e) => setNuevoProducto(e.target.value)}
-              placeholder="Nombre del producto"
-              className={`${inputClass} flex-1`}
+              placeholder="Nombre del producto nuevo"
+              className={`${inputClass} w-full`}
             />
-            <select value={nuevaUnidad} onChange={(e) => setNuevaUnidad(e.target.value)} className={inputClass}>
-              <option>Pallet</option>
-              <option>Cajas</option>
-              <option>Und</option>
-              <option>Saco</option>
-            </select>
-            <button
-              type="button"
-              onClick={handleAgregarProducto}
-              disabled={crearProducto.isPending}
-              className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            >
-              <Plus size={15} />
-            </button>
+            <div className="flex gap-2">
+              <select value={nuevaUnidad} onChange={(e) => setNuevaUnidad(e.target.value)} className={`${inputClass} flex-1`}>
+                <option>Pallet</option>
+                <option>Cajas</option>
+                <option>Und</option>
+                <option>Saco</option>
+              </select>
+              <button
+                type="button"
+                onClick={handleAgregarProducto}
+                disabled={crearProducto.isPending || !nuevoProducto.trim()}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+              >
+                <Plus size={15} /> Agregar
+              </button>
+            </div>
           </div>
         </div>
       </div>

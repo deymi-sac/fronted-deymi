@@ -79,6 +79,17 @@ export function useCrearProductoAlmacen() {
   });
 }
 
+export function useEliminarProductoAlmacen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.eliminarProducto,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["almacen", "productos"] });
+      queryClient.invalidateQueries({ queryKey: ["almacen", "clientes"] });
+    },
+  });
+}
+
 // ---------- Movimientos ----------
 export function useMovimientos(filtros?: Parameters<typeof api.listarMovimientos>[0]) {
   return useQuery({

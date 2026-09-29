@@ -208,15 +208,15 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <p className="mb-2 text-sm font-semibold text-slate-700">Nuevo producto para este cliente</p>
               {errorNuevoProducto && <p className="mb-2 text-sm text-red-600">{errorNuevoProducto}</p>}
+              <input
+                autoFocus
+                value={nuevoProductoNombre}
+                onChange={(e) => setNuevoProductoNombre(e.target.value)}
+                placeholder="Nombre del producto nuevo"
+                className={`${inputClass} mb-2 w-full`}
+              />
               <div className="flex gap-2">
-                <input
-                  autoFocus
-                  value={nuevoProductoNombre}
-                  onChange={(e) => setNuevoProductoNombre(e.target.value)}
-                  placeholder="Nombre del producto"
-                  className={`${inputClass} flex-1`}
-                />
-                <select value={nuevoProductoUnidad} onChange={(e) => setNuevoProductoUnidad(e.target.value)} className={inputClass}>
+                <select value={nuevoProductoUnidad} onChange={(e) => setNuevoProductoUnidad(e.target.value)} className={`${inputClass} flex-1`}>
                   <option>Pallet</option>
                   <option>Cajas</option>
                   <option>Und</option>
@@ -226,7 +226,7 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
                   type="button"
                   onClick={handleCrearProductoInline}
                   disabled={crearProducto.isPending || !nuevoProductoNombre.trim()}
-                  className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
                 >
                   <Plus size={15} /> Agregar
                 </button>

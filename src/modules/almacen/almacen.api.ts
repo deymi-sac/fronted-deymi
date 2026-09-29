@@ -113,6 +113,17 @@ export async function actualizarProducto(
   return data;
 }
 
+export interface EliminarProductoResultado {
+  eliminado: boolean;
+  archivado: boolean;
+  producto: ProductoAlmacen | null;
+}
+
+export async function eliminarProducto(id_producto: number): Promise<EliminarProductoResultado> {
+  const { data } = await api.delete<EliminarProductoResultado>(`/almacen/productos/${id_producto}`);
+  return data;
+}
+
 // ---------- Movimientos ----------
 export interface MovimientoAlmacen {
   id_movimiento: number;
