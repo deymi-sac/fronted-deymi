@@ -222,10 +222,48 @@ export interface AlertaAlmacen {
   detalle: string;
 }
 
+export interface KpisAlmacen {
+  stock_actual: number;
+  ingresos_mes: number;
+  salidas_mes: number;
+  clientes_con_stock: number;
+  ocupacion_almacen_pct: number | null;
+  permanencia_promedio_dias: number;
+}
+
+export interface MovimientoMensual {
+  mes: string;
+  ingresos: number;
+  salidas: number;
+}
+
+export interface BucketAntiguedad {
+  rango: string;
+  pallets: number;
+  estado: "verde" | "amarillo" | "naranja" | "rojo";
+}
+
+export interface OcupacionAlmacen {
+  capacidad_total: number | null;
+  ocupadas: number;
+  disponibles: number | null;
+}
+
+export interface OcupacionPorCliente {
+  razon_social: string;
+  pallets: number;
+  m2: number;
+}
+
 export interface DashboardAlmacen {
+  kpis: KpisAlmacen;
   divisiones: (DivisionAlmacen & { ocupacion_actual: number })[];
   clientes: (ClienteAlmacen & { stock_actual: number })[];
   alertas: AlertaAlmacen[];
+  movimiento_mensual: MovimientoMensual[];
+  antiguedad_inventario: BucketAntiguedad[];
+  ocupacion_almacen: OcupacionAlmacen;
+  ocupacion_por_cliente: OcupacionPorCliente[];
 }
 
 export async function obtenerDashboard(): Promise<DashboardAlmacen> {
