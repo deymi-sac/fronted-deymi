@@ -19,6 +19,7 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
 
   const [nuevoProducto, setNuevoProducto] = useState("");
   const [nuevaUnidad, setNuevaUnidad] = useState("Pallet");
+  const [errorProducto, setErrorProducto] = useState<string | null>(null);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,9 +46,17 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
 
   function handleAgregarProducto() {
     if (!nuevoProducto.trim()) return;
+    setErrorProducto(null);
     crearProducto.mutate(
       { id_cliente_almacen: cliente.id_cliente_almacen, nombre: nuevoProducto.trim(), unidad_medida: nuevaUnidad },
-      { onSuccess: () => setNuevoProducto("") }
+      {
+        onSuccess: () => setNuevoProducto(""),
+        onError: (err) => {
+          setErrorProducto(
+            isAxiosError(err) ? err.response?.data?.error ?? "No se pudo agregar el producto" : "No se pudo agregar el producto"
+          );
+        },
+      }
     );
   }
 
@@ -107,6 +116,7 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
             ))}
             {productos?.length === 0 && <p className="text-sm text-slate-400">Sin productos registrados aún.</p>}
           </ul>
+          {errorProducto && <p className="mb-2 text-sm text-red-600">{errorProducto}</p>}
           <div className="flex gap-2">
             <input
               value={nuevoProducto}
