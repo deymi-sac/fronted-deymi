@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { useClientesAlmacen, useDivisiones, useProductosDeCliente, useCrearMovimiento } from "./useAlmacen";
+import { Plus } from "lucide-react";
+import { useClientesAlmacen, useDivisiones, useProductosDeCliente, useCrearMovimiento, useCrearProductoAlmacen } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
 import type { ExcesoCapacidadInfo } from "./almacen.api";
+
+const NUEVO_PRODUCTO = "__nuevo__";
 
 const MOTIVOS_INGRESO = ["N° solicitud de traslado", "Traspaso interno dentro de ZED"];
 const MOTIVOS_SALIDA = ["Nacionalizada", "Reexpedición marítima", "Reexpedición terrestre", "Traspaso interno dentro de ZED"];
@@ -11,6 +14,7 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
   const { data: clientes } = useClientesAlmacen(false);
   const { data: divisiones } = useDivisiones();
   const crearMovimiento = useCrearMovimiento();
+  const crearProducto = useCrearProductoAlmacen();
 
   const [tipo, setTipo] = useState<"Ingreso" | "Salida">("Ingreso");
   const [motivo, setMotivo] = useState(MOTIVOS_INGRESO[0]);
@@ -30,7 +34,33 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [exceso, setExceso] = useState<ExcesoCapacidadInfo | null>(null);
 
+  const [mostrarNuevoProducto, setMostrarNuevoProducto] = useState(false);
+  const [nuevoProductoNombre, setNuevoProductoNombre] = useState("");
+  const [nuevoProductoUnidad, setNuevoProductoUnidad] = useState("Pallet");
+  const [errorNuevoProducto, setErrorNuevoProducto] = useState<string | null>(null);
+
   const { data: productosCliente } = useProductosDeCliente(idCliente === "" ? null : idCliente);
+
+  function handleCrearProductoInline() {
+    if (!nuevoProductoNombre.trim() || idCliente === "") return;
+    setErrorNuevoProducto(null);
+    crearProducto.mutate(
+      { id_cliente_almacen: Number(idCliente), nombre: nuevoProductoNombre.trim(), unidad_medida: nuevoProductoUnidad },
+      {
+        onSuccess: (producto) => {
+          setIdProducto(producto.id_producto);
+          setUnidadMedida(producto.unidad_medida);
+          setNuevoProductoNombre("");
+          setMostrarNuevoProducto(false);
+        },
+        onError: (err) => {
+          setErrorNuevoProducto(
+            isAxiosError(err) ? err.response?.data?.error ?? "No se pudo crear el producto" : "No se pudo crear el producto"
+          );
+        },
+      }
+    );
+  }
 
   const motivos = tipo === "Ingreso" ? MOTIVOS_INGRESO : MOTIVOS_SALIDA;
 
@@ -135,6 +165,8 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => {
                   setIdCliente(e.target.value ? Number(e.target.value) : "");
                   setIdProducto("");
+                  setMostrarNuevoProducto(false);
+                  setNuevoProductoNombre("");
                 }}
                 className={inputClass}
               >
@@ -147,16 +179,60 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
               </select>
             </Campo>
             <Campo label="Producto">
-              <select value={idProducto} onChange={(e) => setIdProducto(e.target.value ? Number(e.target.value) : "")} className={inputClass}>
+              <select
+                value={idProducto}
+                onChange={(e) => {
+                  if (e.target.value === NUEVO_PRODUCTO) {
+                    setIdProducto("");
+                    setMostrarNuevoProducto(true);
+                    return;
+                  }
+                  setMostrarNuevoProducto(false);
+                  setIdProducto(e.target.value ? Number(e.target.value) : "");
+                }}
+                disabled={idCliente === ""}
+                className={inputClass}
+              >
                 <option value="">Selecciona...</option>
                 {productosCliente?.map((p) => (
                   <option key={p.id_producto} value={p.id_producto}>
                     {p.nombre}
                   </option>
                 ))}
+                <option value={NUEVO_PRODUCTO}>+ Nuevo producto...</option>
               </select>
             </Campo>
           </div>
+
+          {mostrarNuevoProducto && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">Nuevo producto para este cliente</p>
+              {errorNuevoProducto && <p className="mb-2 text-sm text-red-600">{errorNuevoProducto}</p>}
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  value={nuevoProductoNombre}
+                  onChange={(e) => setNuevoProductoNombre(e.target.value)}
+                  placeholder="Nombre del producto"
+                  className={`${inputClass} flex-1`}
+                />
+                <select value={nuevoProductoUnidad} onChange={(e) => setNuevoProductoUnidad(e.target.value)} className={inputClass}>
+                  <option>Pallet</option>
+                  <option>Cajas</option>
+                  <option>Und</option>
+                  <option>Saco</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={handleCrearProductoInline}
+                  disabled={crearProducto.isPending || !nuevoProductoNombre.trim()}
+                  className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                >
+                  <Plus size={15} /> Agregar
+                </button>
+              </div>
+            </div>
+          )}
 
           <div>
             <span className="mb-1.5 block text-sm font-medium text-slate-600">Modo</span>
