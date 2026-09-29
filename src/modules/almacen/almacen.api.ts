@@ -193,6 +193,23 @@ export async function crearMovimiento(payload: CrearMovimientoPayload): Promise<
   return data;
 }
 
+export async function obtenerMovimiento(id_movimiento: number): Promise<MovimientoAlmacen> {
+  const { data } = await api.get<MovimientoAlmacen>(`/almacen/movimientos/${id_movimiento}`);
+  return data;
+}
+
+export async function actualizarMovimiento(
+  id_movimiento: number,
+  payload: Partial<CrearMovimientoPayload>
+): Promise<MovimientoAlmacen> {
+  const { data } = await api.put<MovimientoAlmacen>(`/almacen/movimientos/${id_movimiento}`, payload);
+  return data;
+}
+
+export async function eliminarMovimiento(id_movimiento: number): Promise<void> {
+  await api.delete(`/almacen/movimientos/${id_movimiento}`);
+}
+
 // ---------- Dashboard ----------
 export interface AlertaAlmacen {
   nivel: "red" | "amber" | "neutral";

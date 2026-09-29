@@ -13,8 +13,10 @@ export default function AlmacenUbicacionesPage() {
   const [historialDivision, setHistorialDivision] = useState<DivisionAlmacen | null>(null);
 
   function guardarCapacidad(id_division: number) {
-    const valor = Number(edicion[id_division]);
-    if (isNaN(valor) || valor < 0) {
+    const division = divisiones?.find((d) => d.id_division === id_division);
+    const crudo = edicion[id_division] ?? (division?.capacidad_maxima != null ? String(division.capacidad_maxima) : "");
+    const valor = Number(crudo);
+    if (crudo.trim() === "" || isNaN(valor) || valor < 0) {
       alert("Ingresa un número válido de posiciones/pallets.");
       return;
     }
@@ -86,15 +88,15 @@ export default function AlmacenUbicacionesPage() {
                       <input
                         type="number"
                         min={0}
-                        placeholder={d.capacidad_maxima ? String(d.capacidad_maxima) : "sin definir"}
-                        value={edicion[d.id_division] ?? ""}
+                        placeholder="sin definir"
+                        value={edicion[d.id_division] ?? (d.capacidad_maxima != null ? String(d.capacidad_maxima) : "")}
                         onChange={(e) => setEdicion((prev) => ({ ...prev, [d.id_division]: e.target.value }))}
                         className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-right text-sm text-slate-700 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
                       />
                       <span className="text-xs text-slate-500">pallets</span>
                       <button
                         type="button"
-                        disabled={!edicion[d.id_division] || actualizarCapacidad.isPending}
+                        disabled={actualizarCapacidad.isPending}
                         onClick={() => guardarCapacidad(d.id_division)}
                         className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >

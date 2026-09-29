@@ -108,6 +108,35 @@ export function useCrearMovimiento() {
   });
 }
 
+export function useMovimiento(id_movimiento: number | null) {
+  return useQuery({
+    queryKey: ["almacen", "movimientos", "detalle", id_movimiento],
+    queryFn: () => api.obtenerMovimiento(id_movimiento!),
+    enabled: id_movimiento !== null,
+  });
+}
+
+export function useActualizarMovimiento() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<api.CrearMovimientoPayload> }) =>
+      api.actualizarMovimiento(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["almacen"] });
+    },
+  });
+}
+
+export function useEliminarMovimiento() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: api.eliminarMovimiento,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["almacen"] });
+    },
+  });
+}
+
 // ---------- Dashboard ----------
 export function useDashboardAlmacen() {
   return useQuery({ queryKey: ["almacen", "dashboard"], queryFn: api.obtenerDashboard });

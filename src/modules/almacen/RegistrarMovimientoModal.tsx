@@ -1,35 +1,52 @@
 import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { Plus } from "lucide-react";
-import { useClientesAlmacen, useDivisiones, useProductosDeCliente, useCrearMovimiento, useCrearProductoAlmacen } from "./useAlmacen";
+import {
+  useClientesAlmacen,
+  useDivisiones,
+  useProductosDeCliente,
+  useCrearMovimiento,
+  useActualizarMovimiento,
+  useCrearProductoAlmacen,
+} from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
-import type { ExcesoCapacidadInfo } from "./almacen.api";
+import type { ExcesoCapacidadInfo, MovimientoAlmacen } from "./almacen.api";
 
 const NUEVO_PRODUCTO = "__nuevo__";
 
 const MOTIVOS_INGRESO = ["N° solicitud de traslado", "Traspaso interno dentro de ZED"];
 const MOTIVOS_SALIDA = ["Nacionalizada", "Reexpedición marítima", "Reexpedición terrestre", "Traspaso interno dentro de ZED"];
 
-export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
+export function RegistrarMovimientoModal({
+  onClose,
+  movimientoEditar,
+}: {
+  onClose: () => void;
+  movimientoEditar?: MovimientoAlmacen;
+}) {
+  const editando = !!movimientoEditar;
   const { data: clientes } = useClientesAlmacen(false);
   const { data: divisiones } = useDivisiones();
   const crearMovimiento = useCrearMovimiento();
+  const actualizarMovimiento = useActualizarMovimiento();
   const crearProducto = useCrearProductoAlmacen();
 
-  const [tipo, setTipo] = useState<"Ingreso" | "Salida">("Ingreso");
-  const [motivo, setMotivo] = useState(MOTIVOS_INGRESO[0]);
-  const [idCliente, setIdCliente] = useState<number | "">("");
-  const [idProducto, setIdProducto] = useState<number | "">("");
-  const [modo, setModo] = useState<"Contenedor" | "Carga suelta">("Contenedor");
-  const [numContenedor, setNumContenedor] = useState("");
-  const [numDeclaracion, setNumDeclaracion] = useState("");
-  const [cantidad, setCantidad] = useState("");
-  const [unidadMedida, setUnidadMedida] = useState("Pallet");
-  const [cantidadBultos, setCantidadBultos] = useState("");
-  const [liberaPallet, setLiberaPallet] = useState(true);
-  const [idDivision, setIdDivision] = useState<number | "">("");
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
-  const [observaciones, setObservaciones] = useState("");
+  const [tipo, setTipo] = useState<"Ingreso" | "Salida">(movimientoEditar?.tipo ?? "Ingreso");
+  const [motivo, setMotivo] = useState(movimientoEditar?.motivo ?? MOTIVOS_INGRESO[0]);
+  const [idCliente, setIdCliente] = useState<number | "">(movimientoEditar?.id_cliente_almacen ?? "");
+  const [idProducto, setIdProducto] = useState<number | "">(movimientoEditar?.id_producto ?? "");
+  const [modo, setModo] = useState<"Contenedor" | "Carga suelta">(movimientoEditar?.modo ?? "Contenedor");
+  const [numContenedor, setNumContenedor] = useState(movimientoEditar?.num_contenedor ?? "");
+  const [numDeclaracion, setNumDeclaracion] = useState(movimientoEditar?.num_declaracion ?? "");
+  const [cantidad, setCantidad] = useState(movimientoEditar?.cantidad ?? "");
+  const [unidadMedida, setUnidadMedida] = useState(movimientoEditar?.unidad_medida ?? "Pallet");
+  const [cantidadBultos, setCantidadBultos] = useState(
+    movimientoEditar?.cantidad_bultos != null ? String(movimientoEditar.cantidad_bultos) : ""
+  );
+  const [liberaPallet, setLiberaPallet] = useState(movimientoEditar?.libera_pallet ?? true);
+  const [idDivision, setIdDivision] = useState<number | "">(movimientoEditar?.id_division ?? "");
+  const [fecha, setFecha] = useState(() => movimientoEditar?.fecha.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+  const [observaciones, setObservaciones] = useState(movimientoEditar?.observaciones ?? "");
 
   const [error, setError] = useState<string | null>(null);
   const [exceso, setExceso] = useState<ExcesoCapacidadInfo | null>(null);
@@ -103,6 +120,19 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
       return;
     }
 
+    if (editando) {
+      actualizarMovimiento.mutate(
+        { id: movimientoEditar!.id_movimiento, payload: construirPayload(true) },
+        {
+          onSuccess: onClose,
+          onError: (err) => {
+            setError(isAxiosError(err) ? err.response?.data?.error ?? "No se pudo actualizar el movimiento" : "No se pudo actualizar el movimiento");
+          },
+        }
+      );
+      return;
+    }
+
     crearMovimiento.mutate(construirPayload(forzar), {
       onSuccess: onClose,
       onError: (err) => {
@@ -115,11 +145,13 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
     });
   }
 
+  const guardando = crearMovimiento.isPending || actualizarMovimiento.isPending;
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 py-10">
       <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-b border-slate-200 px-6 py-5">
-          <h2 className="text-lg font-semibold text-slate-800">Registrar movimiento</h2>
+          <h2 className="text-lg font-semibold text-slate-800">{editando ? "Editar movimiento" : "Registrar movimiento"}</h2>
           <p className="mt-1 text-sm text-slate-500">Ingreso o salida de mercadería del almacén.</p>
         </div>
 
@@ -384,10 +416,10 @@ export function RegistrarMovimientoModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={(e) => handleSubmit(e, false)}
-            disabled={crearMovimiento.isPending}
+            disabled={guardando}
             className="rounded-lg bg-[#18193B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#242550] disabled:opacity-50"
           >
-            {crearMovimiento.isPending ? "Registrando..." : `Registrar ${tipo.toLowerCase()}`}
+            {guardando ? "Guardando..." : editando ? "Guardar cambios" : `Registrar ${tipo.toLowerCase()}`}
           </button>
         </div>
       </div>

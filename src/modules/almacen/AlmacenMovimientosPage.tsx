@@ -1,16 +1,34 @@
 import { useState } from "react";
-import { Plus, XCircle, ClipboardList } from "lucide-react";
-import { useMovimientos, useClientesAlmacen, useDivisiones } from "./useAlmacen";
+import { isAxiosError } from "axios";
+import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2 } from "lucide-react";
+import { useMovimientos, useClientesAlmacen, useDivisiones, useEliminarMovimiento } from "./useAlmacen";
 import { RegistrarMovimientoModal } from "./RegistrarMovimientoModal";
+import { VerMovimientoModal } from "./VerMovimientoModal";
 import { Pill, formatearFecha, inputClassGenerico } from "./AlmacenUI";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
+import type { MovimientoAlmacen } from "./almacen.api";
 
 export default function AlmacenMovimientosPage() {
   const puedeOperar = puedeOperarAlmacen(getCurrentUser());
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [movimientoVer, setMovimientoVer] = useState<MovimientoAlmacen | null>(null);
+  const [movimientoEditar, setMovimientoEditar] = useState<MovimientoAlmacen | null>(null);
+  const eliminarMovimiento = useEliminarMovimiento();
   const [cliente, setCliente] = useState<number | "">("");
   const [division, setDivision] = useState<number | "">("");
   const [tipo, setTipo] = useState<string>("");
+
+  function handleEliminar(m: MovimientoAlmacen) {
+    const confirmar = window.confirm(
+      `¿Eliminar este movimiento de ${m.tipo.toLowerCase()} de ${m.clientes.razon_social} (${m.cantidad} ${m.unidad_medida})? Esta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+    eliminarMovimiento.mutate(m.id_movimiento, {
+      onError: (err) => {
+        alert(isAxiosError(err) ? err.response?.data?.error ?? "No se pudo eliminar el movimiento" : "No se pudo eliminar el movimiento");
+      },
+    });
+  }
 
   const { data: clientes } = useClientesAlmacen(false);
   const { data: divisiones } = useDivisiones();
@@ -99,6 +117,7 @@ export default function AlmacenMovimientosPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Declaración</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">División</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Registrado por</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,6 +137,39 @@ export default function AlmacenMovimientosPage() {
                     <td className="px-4 py-3.5 text-sm text-slate-500">
                       {m.registrado_por.nombre} {m.registrado_por.apellido}
                     </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          title="Ver detalle"
+                          onClick={() => setMovimientoVer(m)}
+                          className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        {puedeOperar && (
+                          <>
+                            <button
+                              type="button"
+                              title="Editar"
+                              onClick={() => setMovimientoEditar(m)}
+                              className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              title="Eliminar"
+                              onClick={() => handleEliminar(m)}
+                              disabled={eliminarMovimiento.isPending}
+                              className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -127,6 +179,14 @@ export default function AlmacenMovimientosPage() {
       </div>
 
       {mostrarModal && <RegistrarMovimientoModal onClose={() => setMostrarModal(false)} />}
+      {movimientoVer && <VerMovimientoModal movimiento={movimientoVer} onClose={() => setMovimientoVer(null)} />}
+      {movimientoEditar && (
+        <RegistrarMovimientoModal
+          key={movimientoEditar.id_movimiento}
+          movimientoEditar={movimientoEditar}
+          onClose={() => setMovimientoEditar(null)}
+        />
+      )}
     </div>
   );
 }
