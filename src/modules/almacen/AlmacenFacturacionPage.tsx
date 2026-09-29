@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { FileDown } from "lucide-react";
 import { useClientesAlmacen, useCierreMensual } from "./useAlmacen";
-import { formatearMoneda, formatearFecha, inputClassGenerico } from "./AlmacenUI";
+import { formatearMoneda, formatearFecha, inputClassGenerico, descargarBlob } from "./AlmacenUI";
+import { exportarCierreMensual } from "./almacen.api";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -14,8 +15,22 @@ export default function AlmacenFacturacionPage() {
   const [idCliente, setIdCliente] = useState<number | "">("");
   const [anio, setAnio] = useState(hoy.getFullYear());
   const [mes, setMes] = useState(hoy.getMonth() + 1);
+  const [exportando, setExportando] = useState(false);
 
   const { data: cierre, isLoading } = useCierreMensual(idCliente === "" ? null : idCliente, anio, mes);
+
+  async function handleExportar() {
+    if (idCliente === "") return;
+    setExportando(true);
+    try {
+      const blob = await exportarCierreMensual(idCliente, anio, mes);
+      descargarBlob(blob, `cierre-mensual-${anio}-${String(mes).padStart(2, "0")}.xlsx`);
+    } catch {
+      alert("No se pudo generar el archivo Excel.");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   return (
     <div className="min-h-full bg-slate-50 p-6">
@@ -29,11 +44,11 @@ export default function AlmacenFacturacionPage() {
         </div>
         <button
           type="button"
-          disabled={!cierre}
-          onClick={() => window.print()}
+          disabled={!cierre || exportando}
+          onClick={handleExportar}
           className="flex items-center gap-2 self-start rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
         >
-          <FileDown size={16} /> Exportar cierre mensual
+          <FileDown size={16} /> {exportando ? "Generando..." : "Exportar cierre mensual"}
         </button>
       </div>
 

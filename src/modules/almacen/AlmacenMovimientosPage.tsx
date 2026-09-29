@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { isAxiosError } from "axios";
-import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2 } from "lucide-react";
+import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2, FileDown } from "lucide-react";
 import { useMovimientos, useClientesAlmacen, useDivisiones, useEliminarMovimiento } from "./useAlmacen";
 import { RegistrarMovimientoModal } from "./RegistrarMovimientoModal";
 import { VerMovimientoModal } from "./VerMovimientoModal";
-import { Pill, formatearFecha, inputClassGenerico } from "./AlmacenUI";
+import { Pill, formatearFecha, inputClassGenerico, descargarBlob } from "./AlmacenUI";
+import { exportarKardex } from "./almacen.api";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
 
@@ -13,10 +14,23 @@ export default function AlmacenMovimientosPage() {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [movimientoVer, setMovimientoVer] = useState<MovimientoAlmacen | null>(null);
   const [movimientoEditar, setMovimientoEditar] = useState<MovimientoAlmacen | null>(null);
+  const [exportando, setExportando] = useState(false);
   const eliminarMovimiento = useEliminarMovimiento();
   const [cliente, setCliente] = useState<number | "">("");
   const [division, setDivision] = useState<number | "">("");
   const [tipo, setTipo] = useState<string>("");
+
+  async function handleExportarKardex() {
+    setExportando(true);
+    try {
+      const blob = await exportarKardex();
+      descargarBlob(blob, "kardex-almacen.xlsx");
+    } catch {
+      alert("No se pudo generar el Kardex en Excel.");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   function handleEliminar(m: MovimientoAlmacen) {
     const confirmar = window.confirm(
@@ -50,15 +64,25 @@ export default function AlmacenMovimientosPage() {
           <h1 className="text-2xl font-semibold text-slate-800">Movimientos</h1>
           <p className="mt-1 text-sm text-slate-500">Historial de ingresos y salidas de mercadería.</p>
         </div>
-        {puedeOperar && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setMostrarModal(true)}
-            className="flex items-center gap-2 rounded-lg bg-[#18193B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#242550]"
+            onClick={handleExportarKardex}
+            disabled={exportando}
+            className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
-            <Plus size={16} /> Registrar movimiento
+            <FileDown size={16} /> {exportando ? "Generando..." : "Exportar Kardex"}
           </button>
-        )}
+          {puedeOperar && (
+            <button
+              type="button"
+              onClick={() => setMostrarModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-[#18193B] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#242550]"
+            >
+              <Plus size={16} /> Registrar movimiento
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-5 flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

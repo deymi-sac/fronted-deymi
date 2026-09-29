@@ -210,6 +210,11 @@ export async function eliminarMovimiento(id_movimiento: number): Promise<void> {
   await api.delete(`/almacen/movimientos/${id_movimiento}`);
 }
 
+export async function exportarKardex(): Promise<Blob> {
+  const { data } = await api.get("/almacen/kardex/exportar", { responseType: "blob" });
+  return data;
+}
+
 // ---------- Dashboard ----------
 export interface AlertaAlmacen {
   nivel: "red" | "amber" | "neutral";
@@ -257,6 +262,14 @@ export interface CierreMensual {
 export async function obtenerCierreMensual(idCliente: number, anio: number, mes: number): Promise<CierreMensual> {
   const { data } = await api.get<CierreMensual>(`/almacen/clientes/${idCliente}/cierre-mensual`, {
     params: { anio, mes },
+  });
+  return data;
+}
+
+export async function exportarCierreMensual(idCliente: number, anio: number, mes: number): Promise<Blob> {
+  const { data } = await api.get(`/almacen/clientes/${idCliente}/cierre-mensual/exportar`, {
+    params: { anio, mes },
+    responseType: "blob",
   });
   return data;
 }

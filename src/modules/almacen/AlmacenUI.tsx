@@ -3,6 +3,17 @@ import type { ReactNode } from "react";
 export const inputClassGenerico =
   "rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
 
+export function descargarBlob(blob: Blob, nombreArchivo: string) {
+  const url = window.URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export function KpiCard({
   icon,
   title,
