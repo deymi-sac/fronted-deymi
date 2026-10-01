@@ -138,6 +138,7 @@ export interface MovimientoAlmacen {
   cantidad: string;
   unidad_medida: string;
   cantidad_bultos: number | null;
+  unidad_bultos: string | null;
   libera_pallet: boolean | null;
   fecha: string;
   observaciones: string | null;
@@ -163,6 +164,7 @@ export interface CrearMovimientoPayload {
   cantidad: number;
   unidad_medida: string;
   cantidad_bultos?: number;
+  unidad_bultos?: string;
   libera_pallet?: boolean;
   fecha: string;
   observaciones?: string;

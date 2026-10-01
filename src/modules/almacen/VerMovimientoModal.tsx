@@ -29,7 +29,11 @@ export function VerMovimientoModal({ movimiento, onClose }: { movimiento: Movimi
           <Campo label="Cantidad">
             {movimiento.cantidad} {movimiento.unidad_medida}
           </Campo>
-          <Campo label="Cant. bultos">{movimiento.cantidad_bultos ?? "—"}</Campo>
+          <Campo label={movimiento.tipo === "Ingreso" ? "Bultos por pallet" : "Bultos retirados"}>
+            {movimiento.cantidad_bultos != null
+              ? `${movimiento.cantidad_bultos}${movimiento.unidad_bultos ? " " + movimiento.unidad_bultos : ""}`
+              : "—"}
+          </Campo>
           {movimiento.tipo === "Salida" && (
             <Campo label="Tipo de retiro">
               {movimiento.cantidad_bultos && movimiento.cantidad_bultos > 0

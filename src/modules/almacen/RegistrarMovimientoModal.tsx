@@ -43,6 +43,7 @@ export function RegistrarMovimientoModal({
   const [cantidadBultos, setCantidadBultos] = useState(
     movimientoEditar?.cantidad_bultos != null ? String(movimientoEditar.cantidad_bultos) : ""
   );
+  const [unidadBultos, setUnidadBultos] = useState(movimientoEditar?.unidad_bultos ?? "Saco");
   const [tipoRetiro, setTipoRetiro] = useState<"pallet_completo" | "bultos_sueltos">(
     movimientoEditar?.cantidad_bultos ? "bultos_sueltos" : "pallet_completo"
   );
@@ -108,7 +109,12 @@ export function RegistrarMovimientoModal({
       num_declaracion: numDeclaracion.trim() || undefined,
       cantidad: Number(cantidad),
       unidad_medida: unidadMedida,
-      cantidad_bultos: esSalidaBultosSueltos ? Number(cantidad) : cantidadBultos ? Number(cantidadBultos) : undefined,
+      cantidad_bultos: esSalidaBultosSueltos
+        ? Number(cantidad)
+        : tipo === "Ingreso" && cantidadBultos
+          ? Number(cantidadBultos)
+          : undefined,
+      unidad_bultos: esSalidaBultosSueltos ? unidadMedida : tipo === "Ingreso" && cantidadBultos ? unidadBultos : undefined,
       libera_pallet: tipo === "Salida" ? tipoRetiro === "pallet_completo" : undefined,
       fecha,
       observaciones: observaciones.trim() || undefined,
@@ -331,12 +337,12 @@ export function RegistrarMovimientoModal({
               <p className="text-xs leading-relaxed text-amber-800">
                 {tipoRetiro === "pallet_completo"
                   ? "Se retiran pallets enteros: la cantidad de abajo descuenta esos pallets directamente de la ocupación."
-                  : 'Se retiran solo algunos bultos/sacos/cajas: el sistema calcula solo cuando los bultos retirados completan un pallet (requiere que el ingreso haya indicado "Cant. bultos"). Mientras queden bultos dentro, el pallet sigue ocupando su posición y se sigue facturando normal.'}
+                  : 'Se retiran solo algunos bultos/sacos/cajas: el sistema calcula solo cuando los bultos retirados completan un pallet (requiere que el ingreso haya indicado "Bultos por pallet"). Mientras queden bultos dentro, el pallet sigue ocupando su posición y se sigue facturando normal.'}
               </p>
             </div>
           )}
 
-          <div className={`grid gap-4 ${esSalidaBultosSueltos ? "grid-cols-2" : "grid-cols-3"}`}>
+          <div className="grid grid-cols-2 gap-4">
             <Campo label={esSalidaBultosSueltos ? "Cantidad de bultos retirados *" : "Cantidad *"}>
               <input
                 type="number"
@@ -358,15 +364,25 @@ export function RegistrarMovimientoModal({
                 <option>Saco</option>
               </select>
             </Campo>
-            {!esSalidaBultosSueltos && (
-              <Campo label="Cant. bultos">
-                <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
-                {tipo === "Ingreso" && (
-                  <span className="mt-1 text-xs text-slate-400">Total de bultos/sacos dentro de estos pallets, para calcular retiros parciales.</span>
-                )}
-              </Campo>
-            )}
           </div>
+
+          {tipo === "Ingreso" && (
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="Bultos por pallet">
+                <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
+                <span className="mt-1 text-xs text-slate-400">
+                  Cuántos bultos/sacos/cajas trae CADA pallet, para calcular retiros parciales más adelante.
+                </span>
+              </Campo>
+              <Campo label="Unidad del bulto">
+                <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={inputClass} disabled={!cantidadBultos}>
+                  <option>Saco</option>
+                  <option>Cajas</option>
+                  <option>Und</option>
+                </select>
+              </Campo>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Campo label="División *">
