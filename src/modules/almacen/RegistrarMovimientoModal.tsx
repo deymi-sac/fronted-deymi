@@ -41,6 +41,9 @@ export function RegistrarMovimientoModal({
   const [numDeclaracion, setNumDeclaracion] = useState(movimientoEditar?.num_declaracion ?? "");
   const [cantidad, setCantidad] = useState(movimientoEditar?.cantidad ?? "");
   const [unidadMedida, setUnidadMedida] = useState(movimientoEditar?.unidad_medida ?? "Pallet");
+  const [palletsOcupados, setPalletsOcupados] = useState(
+    movimientoEditar?.pallets_ocupados != null ? String(movimientoEditar.pallets_ocupados) : ""
+  );
   const [cantidadBultos, setCantidadBultos] = useState(
     movimientoEditar?.cantidad_bultos != null ? String(movimientoEditar.cantidad_bultos) : ""
   );
@@ -136,6 +139,10 @@ export function RegistrarMovimientoModal({
   const esSalidaBultosSueltos = tipo === "Salida" && tipoRetiro === "bultos_sueltos";
   const esIngresoConDetalle = tipo === "Ingreso" && palletsDistintos;
   const detalleCompleto = esIngresoConDetalle && detalleBultos.length > 0 && detalleBultos.every((v) => v && Number(v) > 0);
+  // Si el Ingreso se registra en una unidad que no es "Pallet" (ej. 1400 Cajas), hace falta
+  // que el coordinador indique explícitamente cuántos pallets ocupa esa carga — si no, no hay
+  // forma de saber eso y antes se contaba por error la cantidad de cajas como si fueran pallets.
+  const necesitaPalletsOcupados = tipo === "Ingreso" && unidadMedida !== "Pallet";
 
   function construirPayload(forzar: boolean) {
     return {
@@ -149,6 +156,7 @@ export function RegistrarMovimientoModal({
       num_declaracion: numDeclaracion.trim() || undefined,
       cantidad: Number(cantidad),
       unidad_medida: unidadMedida,
+      pallets_ocupados: necesitaPalletsOcupados && palletsOcupados ? Number(palletsOcupados) : undefined,
       cantidad_bultos:
         esSalidaBultosSueltos
           ? Number(cantidad)
@@ -178,6 +186,10 @@ export function RegistrarMovimientoModal({
     }
     if (esIngresoConDetalle && !detalleCompleto) {
       setError("Completa la cantidad de bultos de cada pallet, o desactiva \"pallets con cantidades distintas\".");
+      return;
+    }
+    if (necesitaPalletsOcupados && (!palletsOcupados || Number(palletsOcupados) <= 0)) {
+      setError("Indica cuántos pallets ocupa esta carga.");
       return;
     }
 
@@ -421,7 +433,22 @@ export function RegistrarMovimientoModal({
               </Campo>
             </div>
 
-            {tipo === "Ingreso" && (
+            {necesitaPalletsOcupados && (
+              <Campo label="Pallets que ocupa *">
+                <input
+                  type="number"
+                  min="0"
+                  value={palletsOcupados}
+                  onChange={(e) => setPalletsOcupados(e.target.value)}
+                  className={`${inputClass} max-w-[160px]`}
+                />
+                <span className="mt-1 text-xs text-slate-400">
+                  Cuántos pallets ocupa físicamente esta carga, para calcular ocupación y facturación (independiente de la cantidad de {unidadMedida.toLowerCase()}).
+                </span>
+              </Campo>
+            )}
+
+            {tipo === "Ingreso" && !necesitaPalletsOcupados && (
               <div>
                 <button
                   type="button"

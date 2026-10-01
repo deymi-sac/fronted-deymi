@@ -29,6 +29,13 @@ export function VerMovimientoModal({ movimiento, onClose }: { movimiento: Movimi
           <Campo label="Cantidad">
             {movimiento.cantidad} {movimiento.unidad_medida}
           </Campo>
+          <Campo label="Pallets (ocupados/liberados)">
+            {movimiento.pallets_impacto !== undefined
+              ? movimiento.pallets_impacto > 0
+                ? `+${movimiento.pallets_impacto}`
+                : movimiento.pallets_impacto
+              : "—"}
+          </Campo>
           <Campo label={movimiento.tipo === "Ingreso" ? "Bultos por pallet" : "Bultos retirados"}>
             {movimiento.detalle_bultos_pallets.length > 0
               ? `${movimiento.detalle_bultos_pallets.join(" + ")}${movimiento.unidad_bultos ? " " + movimiento.unidad_bultos : ""} (distinto por pallet)`

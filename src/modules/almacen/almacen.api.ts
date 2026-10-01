@@ -165,6 +165,7 @@ export interface MovimientoAlmacen {
   num_declaracion: string | null;
   cantidad: string;
   unidad_medida: string;
+  pallets_ocupados: number | null;
   cantidad_bultos: number | null;
   unidad_bultos: string | null;
   detalle_bultos_pallets: number[];
@@ -179,6 +180,7 @@ export interface MovimientoAlmacen {
   divisiones: { nombre: string };
   registrado_por: { nombre: string; apellido: string };
   aprobador: { nombre: string; apellido: string } | null;
+  pallets_impacto?: number;
 }
 
 export interface CrearMovimientoPayload {
@@ -192,6 +194,7 @@ export interface CrearMovimientoPayload {
   num_declaracion?: string;
   cantidad: number;
   unidad_medida: string;
+  pallets_ocupados?: number;
   cantidad_bultos?: number;
   unidad_bultos?: string;
   detalle_bultos_pallets?: number[];
