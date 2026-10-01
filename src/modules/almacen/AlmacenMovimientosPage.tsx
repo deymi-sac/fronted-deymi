@@ -4,7 +4,7 @@ import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2, FileDown } from "luc
 import { useMovimientos, useClientesAlmacen, useDivisiones, useEliminarMovimiento } from "./useAlmacen";
 import { RegistrarMovimientoModal } from "./RegistrarMovimientoModal";
 import { VerMovimientoModal } from "./VerMovimientoModal";
-import { Pill, formatearFecha, inputClassGenerico, descargarBlob } from "./AlmacenUI";
+import { Pill, formatearFecha, inputClassGenerico, descargarBlob, totalBultosMovimiento } from "./AlmacenUI";
 import { exportarKardex } from "./almacen.api";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
@@ -162,11 +162,10 @@ export default function AlmacenMovimientosPage() {
                       {m.pallets_impacto !== undefined ? (m.pallets_impacto > 0 ? `+${m.pallets_impacto}` : m.pallets_impacto) : "—"}
                     </td>
                     <td className="px-4 py-3.5 text-sm text-slate-500">
-                      {m.detalle_bultos_pallets.length > 0
-                        ? `${m.detalle_bultos_pallets.join(" + ")}${m.unidad_bultos ? " " + m.unidad_bultos : ""}`
-                        : m.cantidad_bultos != null
-                          ? `${m.cantidad_bultos}${m.unidad_bultos ? " " + m.unidad_bultos : ""}`
-                          : "—"}
+                      {(() => {
+                        const bultos = totalBultosMovimiento(m);
+                        return bultos ? `${bultos.total}${bultos.unidad ? " " + bultos.unidad : ""}` : "—";
+                      })()}
                     </td>
                     <td className="px-4 py-3.5 text-sm text-slate-500">{m.num_declaracion ?? "—"}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-500">{m.divisiones.nombre}</td>

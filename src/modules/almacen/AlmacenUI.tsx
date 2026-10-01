@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { MovimientoAlmacen } from "./almacen.api";
 
 export const inputClassGenerico =
   "rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
@@ -81,6 +82,18 @@ export function AlertaCard({
 export function formatearMoneda(valor: number | null) {
   if (valor === null) return "Pendiente";
   return `US$ ${valor.toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Devuelve el total de bultos de un movimiento, ya sumado (no el detalle por pallet).
+// En un Ingreso, "cantidad_bultos" es bultos POR pallet (salvo que haya detalle distinto
+// por pallet, que ya viene desglosado); en una Salida es directamente el total retirado.
+export function totalBultosMovimiento(m: MovimientoAlmacen): { total: number; unidad: string | null } | null {
+  if (m.detalle_bultos_pallets.length > 0) {
+    return { total: m.detalle_bultos_pallets.reduce((acc, v) => acc + v, 0), unidad: m.unidad_bultos };
+  }
+  if (m.cantidad_bultos == null) return null;
+  const total = m.tipo === "Ingreso" ? m.cantidad_bultos * Number(m.cantidad) : m.cantidad_bultos;
+  return { total, unidad: m.unidad_bultos };
 }
 
 export function formatearFecha(iso: string | null) {
