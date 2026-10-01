@@ -139,6 +139,7 @@ export default function AlmacenMovimientosPage() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Producto</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Cant.</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Pallets</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Bultos</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Declaración</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">División</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Registrado por</th>
@@ -159,6 +160,13 @@ export default function AlmacenMovimientosPage() {
                     </td>
                     <td className="px-4 py-3.5 text-right text-sm tabular-nums text-slate-600">
                       {m.pallets_impacto !== undefined ? (m.pallets_impacto > 0 ? `+${m.pallets_impacto}` : m.pallets_impacto) : "—"}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-slate-500">
+                      {m.detalle_bultos_pallets.length > 0
+                        ? `${m.detalle_bultos_pallets.join(" + ")}${m.unidad_bultos ? " " + m.unidad_bultos : ""}`
+                        : m.cantidad_bultos != null
+                          ? `${m.cantidad_bultos}${m.unidad_bultos ? " " + m.unidad_bultos : ""}`
+                          : "—"}
                     </td>
                     <td className="px-4 py-3.5 text-sm text-slate-500">{m.num_declaracion ?? "—"}</td>
                     <td className="px-4 py-3.5 text-sm text-slate-500">{m.divisiones.nombre}</td>
