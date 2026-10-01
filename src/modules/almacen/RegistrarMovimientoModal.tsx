@@ -43,7 +43,9 @@ export function RegistrarMovimientoModal({
   const [cantidadBultos, setCantidadBultos] = useState(
     movimientoEditar?.cantidad_bultos != null ? String(movimientoEditar.cantidad_bultos) : ""
   );
-  const [liberaPallet, setLiberaPallet] = useState(movimientoEditar?.libera_pallet ?? true);
+  const [tipoRetiro, setTipoRetiro] = useState<"pallet_completo" | "bultos_sueltos">(
+    movimientoEditar?.cantidad_bultos ? "bultos_sueltos" : "pallet_completo"
+  );
   const [idDivision, setIdDivision] = useState<number | "">(movimientoEditar?.id_division ?? "");
   const [fecha, setFecha] = useState(() => movimientoEditar?.fecha.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
   const [observaciones, setObservaciones] = useState(movimientoEditar?.observaciones ?? "");
@@ -92,6 +94,8 @@ export function RegistrarMovimientoModal({
     [divisiones, idDivision]
   );
 
+  const esSalidaBultosSueltos = tipo === "Salida" && tipoRetiro === "bultos_sueltos";
+
   function construirPayload(forzar: boolean) {
     return {
       tipo,
@@ -104,8 +108,8 @@ export function RegistrarMovimientoModal({
       num_declaracion: numDeclaracion.trim() || undefined,
       cantidad: Number(cantidad),
       unidad_medida: unidadMedida,
-      cantidad_bultos: cantidadBultos ? Number(cantidadBultos) : undefined,
-      libera_pallet: tipo === "Salida" ? liberaPallet : undefined,
+      cantidad_bultos: esSalidaBultosSueltos ? Number(cantidad) : cantidadBultos ? Number(cantidadBultos) : undefined,
+      libera_pallet: tipo === "Salida" ? tipoRetiro === "pallet_completo" : undefined,
       fecha,
       observaciones: observaciones.trim() || undefined,
       forzar_exceso_capacidad: forzar,
@@ -299,8 +303,41 @@ export function RegistrarMovimientoModal({
             </Campo>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <Campo label="Cantidad *">
+          {tipo === "Salida" && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-amber-800">Tipo de retiro</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTipoRetiro("pallet_completo")}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      tipoRetiro === "pallet_completo" ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
+                    }`}
+                  >
+                    Pallet completo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTipoRetiro("bultos_sueltos")}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                      tipoRetiro === "bultos_sueltos" ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
+                    }`}
+                  >
+                    Bultos sueltos
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs leading-relaxed text-amber-800">
+                {tipoRetiro === "pallet_completo"
+                  ? "Se retiran pallets enteros: la cantidad de abajo descuenta esos pallets directamente de la ocupación."
+                  : 'Se retiran solo algunos bultos/sacos/cajas: el sistema calcula solo cuando los bultos retirados completan un pallet (requiere que el ingreso haya indicado "Cant. bultos"). Mientras queden bultos dentro, el pallet sigue ocupando su posición y se sigue facturando normal.'}
+              </p>
+            </div>
+          )}
+
+          <div className={`grid gap-4 ${esSalidaBultosSueltos ? "grid-cols-2" : "grid-cols-3"}`}>
+            <Campo label={esSalidaBultosSueltos ? "Cantidad de bultos retirados *" : "Cantidad *"}>
               <input
                 type="number"
                 min="0"
@@ -321,42 +358,15 @@ export function RegistrarMovimientoModal({
                 <option>Saco</option>
               </select>
             </Campo>
-            <Campo label="Cant. bultos">
-              <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
-            </Campo>
+            {!esSalidaBultosSueltos && (
+              <Campo label="Cant. bultos">
+                <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
+                {tipo === "Ingreso" && (
+                  <span className="mt-1 text-xs text-slate-400">Total de bultos/sacos dentro de estos pallets, para calcular retiros parciales.</span>
+                )}
+              </Campo>
+            )}
           </div>
-
-          {tipo === "Salida" && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <div className="mb-1 flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-amber-800">¿Esta salida libera el pallet?</span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setLiberaPallet(true)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                      liberaPallet ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
-                    }`}
-                  >
-                    Sí
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLiberaPallet(false)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                      !liberaPallet ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
-                    }`}
-                  >
-                    No
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs leading-relaxed text-amber-800">
-                "No" (ej. retiro de solo cajas) descuenta los bultos pero el pallet sigue ocupando su posición y se sigue
-                facturando. Solo "Sí" libera la posición y descuenta el pallet.
-              </p>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 gap-4">
             <Campo label="División *">

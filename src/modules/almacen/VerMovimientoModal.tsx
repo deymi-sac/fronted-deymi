@@ -31,7 +31,13 @@ export function VerMovimientoModal({ movimiento, onClose }: { movimiento: Movimi
           </Campo>
           <Campo label="Cant. bultos">{movimiento.cantidad_bultos ?? "—"}</Campo>
           {movimiento.tipo === "Salida" && (
-            <Campo label="¿Libera el pallet?">{movimiento.libera_pallet ? "Sí" : "No"}</Campo>
+            <Campo label="Tipo de retiro">
+              {movimiento.cantidad_bultos && movimiento.cantidad_bultos > 0
+                ? "Bultos sueltos (parcial)"
+                : movimiento.libera_pallet
+                  ? "Pallet completo"
+                  : "No afecta ocupación"}
+            </Campo>
           )}
           <Campo label="Fecha">{formatearFecha(movimiento.fecha)}</Campo>
           <div className="col-span-2">
