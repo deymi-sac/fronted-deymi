@@ -49,8 +49,11 @@ export function RegistrarMovimientoModal({
   );
   const [unidadBultos, setUnidadBultos] = useState(movimientoEditar?.unidad_bultos ?? "Saco");
   const [palletsDistintos, setPalletsDistintos] = useState((movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0);
-  const [detalleBultos, setDetalleBultos] = useState<string[]>(
-    (movimientoEditar?.detalle_bultos_pallets ?? []).map(String)
+  const [totalBultosDistintos, setTotalBultosDistintos] = useState(
+    movimientoEditar?.detalle_bultos_pallets.length ? String(movimientoEditar.detalle_bultos_pallets.reduce((a, b) => a + b, 0)) : ""
+  );
+  const [bultosEstandarDistintos, setBultosEstandarDistintos] = useState(
+    movimientoEditar?.detalle_bultos_pallets.length ? String(movimientoEditar.detalle_bultos_pallets[0]) : ""
   );
   const [mostrarDetalleBultos, setMostrarDetalleBultos] = useState(
     !!movimientoEditar?.cantidad_bultos || (movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0
@@ -85,17 +88,25 @@ export function RegistrarMovimientoModal({
     }
   }, [tipo, idCliente, stockPorDivisionCliente, idDivision]);
 
-  // Mantiene un input de bultos por cada pallet declarado en "Cantidad".
+  // En vez de pedir un input por cada pallet (inviable con 20-30 pallets), se pide el total
+  // de bultos y cuántos trae cada pallet "estándar"; el sistema reparte automáticamente y
+  // mete el resto (si no divide exacto) en un último pallet — ej. 294 bultos de a 10 = 29
+  // pallets de 10 + 1 pallet de 4.
+  const distintoCalculo = useMemo(() => {
+    if (tipo !== "Ingreso" || !palletsDistintos) return null;
+    const total = Number(totalBultosDistintos);
+    const estandar = Number(bultosEstandarDistintos);
+    if (!total || !estandar || total <= 0 || estandar <= 0) return null;
+    const palletsCompletos = Math.floor(total / estandar);
+    const resto = total % estandar;
+    const detalle = resto > 0 ? [...Array(palletsCompletos).fill(estandar), resto] : Array(palletsCompletos).fill(estandar);
+    return { pallets: detalle.length, detalle, resto, palletsCompletos };
+  }, [tipo, palletsDistintos, totalBultosDistintos, bultosEstandarDistintos]);
+
+  // La "Cantidad" de pallets queda determinada por el cálculo de arriba en este modo.
   useEffect(() => {
-    if (tipo !== "Ingreso" || !palletsDistintos) return;
-    const n = Math.max(0, Math.floor(Number(cantidad) || 0));
-    setDetalleBultos((prev) => {
-      if (prev.length === n) return prev;
-      const siguiente = prev.slice(0, n);
-      while (siguiente.length < n) siguiente.push("");
-      return siguiente;
-    });
-  }, [tipo, palletsDistintos, cantidad]);
+    if (distintoCalculo) setCantidad(String(distintoCalculo.pallets));
+  }, [distintoCalculo]);
 
   function handleCrearProductoInline() {
     if (!nuevoProductoNombre.trim() || idCliente === "") return;
@@ -138,7 +149,7 @@ export function RegistrarMovimientoModal({
 
   const esSalidaBultosSueltos = tipo === "Salida" && tipoRetiro === "bultos_sueltos";
   const esIngresoConDetalle = tipo === "Ingreso" && palletsDistintos;
-  const detalleCompleto = esIngresoConDetalle && detalleBultos.length > 0 && detalleBultos.every((v) => v && Number(v) > 0);
+  const detalleCompleto = esIngresoConDetalle && distintoCalculo !== null;
   // Si el Ingreso se registra en una unidad que no es "Pallet" (ej. 1400 Cajas), hace falta
   // que el coordinador indique explícitamente cuántos pallets ocupa esa carga — si no, no hay
   // forma de saber eso y antes se contaba por error la cantidad de cajas como si fueran pallets.
@@ -169,7 +180,7 @@ export function RegistrarMovimientoModal({
           : tipo === "Ingreso" && (esIngresoConDetalle ? detalleCompleto : !!cantidadBultos)
             ? unidadBultos
             : undefined,
-      detalle_bultos_pallets: detalleCompleto ? detalleBultos.map(Number) : undefined,
+      detalle_bultos_pallets: detalleCompleto ? distintoCalculo!.detalle : undefined,
       libera_pallet: tipo === "Salida" ? tipoRetiro === "pallet_completo" : undefined,
       fecha,
       observaciones: observaciones.trim() || undefined,
@@ -185,7 +196,7 @@ export function RegistrarMovimientoModal({
       return;
     }
     if (esIngresoConDetalle && !detalleCompleto) {
-      setError("Completa la cantidad de bultos de cada pallet, o desactiva \"pallets con cantidades distintas\".");
+      setError("Completa el total de bultos y los bultos por pallet estándar, o desactiva \"pallets con cantidades distintas\".");
       return;
     }
     if (necesitaPalletsOcupados && (!palletsOcupados || Number(palletsOcupados) <= 0)) {
@@ -416,12 +427,16 @@ export function RegistrarMovimientoModal({
                   min="0"
                   step="0.01"
                   value={cantidad}
+                  disabled={esIngresoConDetalle}
                   onChange={(e) => {
                     setCantidad(e.target.value);
                     setExceso(null);
                   }}
-                  className={inputClass}
+                  className={`${inputClass} ${esIngresoConDetalle ? "bg-slate-100 text-slate-500" : ""}`}
                 />
+                {esIngresoConDetalle && (
+                  <span className="mt-1 text-xs text-slate-400">Calculado desde el detalle de bultos de abajo.</span>
+                )}
               </Campo>
               <Campo label="Unidad">
                 <select value={unidadMedida} onChange={(e) => setUnidadMedida(e.target.value)} className={inputClass}>
@@ -487,36 +502,40 @@ export function RegistrarMovimientoModal({
                     ) : (
                       <div className="flex flex-col gap-3">
                         <p className="text-xs text-slate-500">
-                          Indica cuántos bultos trae cada pallet. Primero define la "Cantidad" de pallets arriba.
+                          Ej: 294 bultos a 10 por pallet = 29 pallets de 10 + 1 pallet con el resto (4).
                         </p>
-                        {detalleBultos.length === 0 ? (
-                          <p className="text-xs text-amber-700">Define primero la cantidad de pallets.</p>
-                        ) : (
-                          <div className="flex flex-col gap-2">
-                            {detalleBultos.map((valor, i) => (
-                              <div key={i} className="flex items-center gap-2">
-                                <span className="w-16 flex-shrink-0 text-xs font-medium text-slate-500">Pallet {i + 1}</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={valor}
-                                  onChange={(e) => {
-                                    const copia = [...detalleBultos];
-                                    copia[i] = e.target.value;
-                                    setDetalleBultos(copia);
-                                  }}
-                                  className={`${inputClass} flex-1`}
-                                />
-                              </div>
-                            ))}
-                            <Campo label="Unidad del bulto">
-                              <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={`${inputClass} max-w-[160px]`}>
-                                <option>Saco</option>
-                                <option>Cajas</option>
-                                <option>Und</option>
-                              </select>
-                            </Campo>
-                          </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Campo label="Total de bultos">
+                            <input
+                              type="number"
+                              min="0"
+                              value={totalBultosDistintos}
+                              onChange={(e) => setTotalBultosDistintos(e.target.value)}
+                              className={inputClass}
+                            />
+                          </Campo>
+                          <Campo label="Bultos por pallet (estándar)">
+                            <input
+                              type="number"
+                              min="0"
+                              value={bultosEstandarDistintos}
+                              onChange={(e) => setBultosEstandarDistintos(e.target.value)}
+                              className={inputClass}
+                            />
+                          </Campo>
+                        </div>
+                        <Campo label="Unidad del bulto">
+                          <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={`${inputClass} max-w-[160px]`}>
+                            <option>Saco</option>
+                            <option>Cajas</option>
+                            <option>Und</option>
+                          </select>
+                        </Campo>
+                        {distintoCalculo && (
+                          <p className="text-xs font-medium text-slate-600">
+                            = {distintoCalculo.pallets} pallets ({distintoCalculo.palletsCompletos} de {bultosEstandarDistintos}
+                            {distintoCalculo.resto > 0 ? ` + 1 de ${distintoCalculo.resto}` : ""})
+                          </p>
                         )}
                       </div>
                     )}
