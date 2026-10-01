@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { XCircle, History } from "lucide-react";
-import { useDivisiones, useActualizarCapacidad, useHistorialCapacidad } from "./useAlmacen";
+import { XCircle, History, ChevronDown, ChevronRight, Package } from "lucide-react";
+import { useDivisiones, useActualizarCapacidad, useHistorialCapacidad, useDetalleOcupacionDivision } from "./useAlmacen";
 import { formatearFecha } from "./AlmacenUI";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { DivisionAlmacen } from "./almacen.api";
@@ -11,6 +11,7 @@ export default function AlmacenUbicacionesPage() {
   const actualizarCapacidad = useActualizarCapacidad();
   const [edicion, setEdicion] = useState<Record<number, string>>({});
   const [historialDivision, setHistorialDivision] = useState<DivisionAlmacen | null>(null);
+  const [divisionExpandida, setDivisionExpandida] = useState<number | null>(null);
 
   function guardarCapacidad(id_division: number) {
     const division = divisiones?.find((d) => d.id_division === id_division);
@@ -115,8 +116,18 @@ export default function AlmacenUbicacionesPage() {
                   >
                     <History size={13} /> Ver historial
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setDivisionExpandida((v) => (v === d.id_division ? null : d.id_division))}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    {divisionExpandida === d.id_division ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                    <Package size={13} /> Qué hay guardado
+                  </button>
                 </div>
               </div>
+
+              {divisionExpandida === d.id_division && <DetalleDivision id_division={d.id_division} />}
             </div>
           );
         })}
@@ -124,6 +135,34 @@ export default function AlmacenUbicacionesPage() {
 
       {historialDivision && (
         <HistorialCapacidadModal division={historialDivision} onClose={() => setHistorialDivision(null)} />
+      )}
+    </div>
+  );
+}
+
+function DetalleDivision({ id_division }: { id_division: number }) {
+  const { data: detalle, isLoading } = useDetalleOcupacionDivision(id_division);
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      {isLoading ? (
+        <p className="text-sm text-slate-400">Cargando...</p>
+      ) : !detalle || detalle.length === 0 ? (
+        <p className="text-sm text-slate-400">No hay stock guardado en esta división.</p>
+      ) : (
+        <div className="flex flex-col gap-2.5">
+          {detalle.map((c) => (
+            <div key={c.id_cliente_almacen} className="flex flex-col gap-1 rounded-lg bg-white px-3 py-2.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-700">{c.razon_social}</span>
+                <span className="font-semibold text-slate-800">{c.pallets} pallets</span>
+              </div>
+              <p className="text-xs text-slate-400">
+                {c.productos.map((p) => `${p.nombre} (${p.pallets})`).join(" · ")}
+              </p>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

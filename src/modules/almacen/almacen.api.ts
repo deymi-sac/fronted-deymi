@@ -36,6 +36,23 @@ export async function historialCapacidadDivision(id_division: number): Promise<H
   return data;
 }
 
+export interface ProductoEnDivision {
+  nombre: string;
+  pallets: number;
+}
+
+export interface ClienteEnDivision {
+  id_cliente_almacen: number;
+  razon_social: string;
+  pallets: number;
+  productos: ProductoEnDivision[];
+}
+
+export async function detalleOcupacionDivision(id_division: number): Promise<ClienteEnDivision[]> {
+  const { data } = await api.get<ClienteEnDivision[]>(`/almacen/divisiones/${id_division}/detalle`);
+  return data;
+}
+
 // ---------- Clientes ----------
 export interface ProductoAlmacen {
   id_producto: number;
@@ -80,6 +97,17 @@ export async function crearCliente(payload: CrearClientePayload): Promise<Client
 
 export async function actualizarCliente(id: number, payload: Partial<CrearClientePayload>): Promise<ClienteAlmacen> {
   const { data } = await api.put<ClienteAlmacen>(`/almacen/clientes/${id}`, payload);
+  return data;
+}
+
+export interface StockPorDivision {
+  id_division: number;
+  nombre: string;
+  pallets: number;
+}
+
+export async function stockPorClientePorDivision(id_cliente_almacen: number): Promise<StockPorDivision[]> {
+  const { data } = await api.get<StockPorDivision[]>(`/almacen/clientes/${id_cliente_almacen}/stock-por-division`);
   return data;
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { Plus } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import {
   useClientesAlmacen,
   useDivisiones,
@@ -8,6 +8,7 @@ import {
   useCrearMovimiento,
   useActualizarMovimiento,
   useCrearProductoAlmacen,
+  useStockPorClientePorDivision,
 } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
 import type { ExcesoCapacidadInfo, MovimientoAlmacen } from "./almacen.api";
@@ -48,6 +49,9 @@ export function RegistrarMovimientoModal({
   const [detalleBultos, setDetalleBultos] = useState<string[]>(
     (movimientoEditar?.detalle_bultos_pallets ?? []).map(String)
   );
+  const [mostrarDetalleBultos, setMostrarDetalleBultos] = useState(
+    !!movimientoEditar?.cantidad_bultos || (movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0
+  );
   const [tipoRetiro, setTipoRetiro] = useState<"pallet_completo" | "bultos_sueltos">(
     movimientoEditar?.cantidad_bultos ? "bultos_sueltos" : "pallet_completo"
   );
@@ -64,6 +68,19 @@ export function RegistrarMovimientoModal({
   const [errorNuevoProducto, setErrorNuevoProducto] = useState<string | null>(null);
 
   const { data: productosCliente } = useProductosDeCliente(idCliente === "" ? null : idCliente);
+
+  // Al registrar una Salida, solo tiene sentido elegir una división donde el cliente
+  // realmente tenga stock — evita retiros registrados en la división equivocada.
+  const { data: stockPorDivisionCliente, isLoading: cargandoStockDivision } = useStockPorClientePorDivision(
+    tipo === "Salida" && idCliente !== "" ? idCliente : null
+  );
+
+  useEffect(() => {
+    if (tipo !== "Salida" || idCliente === "" || !stockPorDivisionCliente) return;
+    if (idDivision !== "" && !stockPorDivisionCliente.some((d) => d.id_division === idDivision)) {
+      setIdDivision("");
+    }
+  }, [tipo, idCliente, stockPorDivisionCliente, idDivision]);
 
   // Mantiene un input de bultos por cada pallet declarado en "Cantidad".
   useEffect(() => {
@@ -104,11 +121,16 @@ export function RegistrarMovimientoModal({
     setTipo(nuevo);
     setMotivo(nuevo === "Ingreso" ? MOTIVOS_INGRESO[0] : MOTIVOS_SALIDA[0]);
     setExceso(null);
+    setIdDivision("");
   }
 
   const divisionSeleccionada = useMemo(
     () => divisiones?.find((d) => d.id_division === idDivision) ?? null,
     [divisiones, idDivision]
+  );
+  const stockClienteEnDivisionSeleccionada = useMemo(
+    () => stockPorDivisionCliente?.find((d) => d.id_division === idDivision) ?? null,
+    [stockPorDivisionCliente, idDivision]
   );
 
   const esSalidaBultosSueltos = tipo === "Salida" && tipoRetiro === "bultos_sueltos";
@@ -194,298 +216,335 @@ export function RegistrarMovimientoModal({
           <p className="mt-1 text-sm text-slate-500">Ingreso o salida de mercadería del almacén.</p>
         </div>
 
-        <form onSubmit={(e) => handleSubmit(e, false)} className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-6 py-5">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="flex max-h-[70vh] flex-col gap-5 overflow-y-auto px-6 py-5">
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-          <div>
-            <span className="mb-1.5 block text-sm font-medium text-slate-600">Tipo de movimiento</span>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => cambiarTipo("Ingreso")}
-                className={`rounded-xl border py-3 text-sm font-semibold transition ${
-                  tipo === "Ingreso" ? "border-2 border-green-600 bg-green-50 text-green-700" : "border-slate-200 text-slate-500"
-                }`}
-              >
-                Ingreso
-              </button>
-              <button
-                type="button"
-                onClick={() => cambiarTipo("Salida")}
-                className={`rounded-xl border py-3 text-sm font-semibold transition ${
-                  tipo === "Salida" ? "border-2 border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-500"
-                }`}
-              >
-                Salida
-              </button>
+          <Seccion titulo="Datos generales">
+            <div>
+              <span className="mb-1.5 block text-sm font-medium text-slate-600">Tipo de movimiento</span>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => cambiarTipo("Ingreso")}
+                  className={`rounded-xl border py-3 text-sm font-semibold transition ${
+                    tipo === "Ingreso" ? "border-2 border-green-600 bg-green-50 text-green-700" : "border-slate-200 text-slate-500"
+                  }`}
+                >
+                  Ingreso
+                </button>
+                <button
+                  type="button"
+                  onClick={() => cambiarTipo("Salida")}
+                  className={`rounded-xl border py-3 text-sm font-semibold transition ${
+                    tipo === "Salida" ? "border-2 border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-500"
+                  }`}
+                >
+                  Salida
+                </button>
+              </div>
             </div>
-          </div>
 
-          <Campo label={`Motivo de ${tipo.toLowerCase()} *`}>
-            <select value={motivo} onChange={(e) => setMotivo(e.target.value)} className={inputClass}>
-              {motivos.map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </select>
-          </Campo>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Campo label="Cliente *">
-              <select
-                value={idCliente}
-                onChange={(e) => {
-                  setIdCliente(e.target.value ? Number(e.target.value) : "");
-                  setIdProducto("");
-                  setMostrarNuevoProducto(false);
-                  setNuevoProductoNombre("");
-                }}
-                className={inputClass}
-              >
-                <option value="">Selecciona...</option>
-                {clientes?.map((c) => (
-                  <option key={c.id_cliente_almacen} value={c.id_cliente_almacen}>
-                    {c.razon_social}
-                  </option>
+            <Campo label={`Motivo de ${tipo.toLowerCase()} *`}>
+              <select value={motivo} onChange={(e) => setMotivo(e.target.value)} className={inputClass}>
+                {motivos.map((m) => (
+                  <option key={m}>{m}</option>
                 ))}
               </select>
             </Campo>
-            <Campo label="Producto">
-              <select
-                value={idProducto}
-                onChange={(e) => {
-                  if (e.target.value === NUEVO_PRODUCTO) {
+
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="Cliente *">
+                <select
+                  value={idCliente}
+                  onChange={(e) => {
+                    setIdCliente(e.target.value ? Number(e.target.value) : "");
                     setIdProducto("");
-                    setMostrarNuevoProducto(true);
-                    return;
-                  }
-                  setMostrarNuevoProducto(false);
-                  setIdProducto(e.target.value ? Number(e.target.value) : "");
-                }}
-                disabled={idCliente === ""}
-                className={inputClass}
-              >
-                <option value="">Selecciona...</option>
-                {productosCliente?.map((p) => (
-                  <option key={p.id_producto} value={p.id_producto}>
-                    {p.nombre}
-                  </option>
-                ))}
-                <option value={NUEVO_PRODUCTO}>+ Nuevo producto...</option>
-              </select>
-            </Campo>
-          </div>
+                    setIdDivision("");
+                    setMostrarNuevoProducto(false);
+                    setNuevoProductoNombre("");
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">Selecciona...</option>
+                  {clientes?.map((c) => (
+                    <option key={c.id_cliente_almacen} value={c.id_cliente_almacen}>
+                      {c.razon_social}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Producto">
+                <select
+                  value={idProducto}
+                  onChange={(e) => {
+                    if (e.target.value === NUEVO_PRODUCTO) {
+                      setIdProducto("");
+                      setMostrarNuevoProducto(true);
+                      return;
+                    }
+                    setMostrarNuevoProducto(false);
+                    setIdProducto(e.target.value ? Number(e.target.value) : "");
+                  }}
+                  disabled={idCliente === ""}
+                  className={inputClass}
+                >
+                  <option value="">Selecciona...</option>
+                  {productosCliente?.map((p) => (
+                    <option key={p.id_producto} value={p.id_producto}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                  <option value={NUEVO_PRODUCTO}>+ Nuevo producto...</option>
+                </select>
+              </Campo>
+            </div>
 
-          {mostrarNuevoProducto && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="mb-2 text-sm font-semibold text-slate-700">Nuevo producto para este cliente</p>
-              {errorNuevoProducto && <p className="mb-2 text-sm text-red-600">{errorNuevoProducto}</p>}
-              <input
-                autoFocus
-                value={nuevoProductoNombre}
-                onChange={(e) => setNuevoProductoNombre(e.target.value)}
-                placeholder="Nombre del producto nuevo"
-                className={`${inputClass} mb-2 w-full`}
-              />
-              <div className="flex gap-2">
-                <select value={nuevoProductoUnidad} onChange={(e) => setNuevoProductoUnidad(e.target.value)} className={`${inputClass} flex-1`}>
+            {mostrarNuevoProducto && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="mb-2 text-sm font-semibold text-slate-700">Nuevo producto para este cliente</p>
+                {errorNuevoProducto && <p className="mb-2 text-sm text-red-600">{errorNuevoProducto}</p>}
+                <input
+                  autoFocus
+                  value={nuevoProductoNombre}
+                  onChange={(e) => setNuevoProductoNombre(e.target.value)}
+                  placeholder="Nombre del producto nuevo"
+                  className={`${inputClass} mb-2 w-full`}
+                />
+                <div className="flex gap-2">
+                  <select value={nuevoProductoUnidad} onChange={(e) => setNuevoProductoUnidad(e.target.value)} className={`${inputClass} flex-1`}>
+                    <option>Pallet</option>
+                    <option>Cajas</option>
+                    <option>Und</option>
+                    <option>Saco</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleCrearProductoInline}
+                    disabled={crearProducto.isPending || !nuevoProductoNombre.trim()}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    <Plus size={15} /> Agregar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <span className="mb-1.5 block text-sm font-medium text-slate-600">Modo</span>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setModo("Contenedor")}
+                  className={`rounded-xl border py-2.5 text-sm font-medium transition ${
+                    modo === "Contenedor" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
+                  }`}
+                >
+                  Contenedor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModo("Carga suelta")}
+                  className={`rounded-xl border py-2.5 text-sm font-medium transition ${
+                    modo === "Carga suelta" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
+                  }`}
+                >
+                  Carga suelta
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="N° de contenedor">
+                <input value={numContenedor} onChange={(e) => setNumContenedor(e.target.value)} className={inputClass} placeholder="HLBU2680426" />
+              </Campo>
+              <Campo label="N° Declaración / Traspaso">
+                <input value={numDeclaracion} onChange={(e) => setNumDeclaracion(e.target.value)} className={inputClass} placeholder="Texto libre" />
+              </Campo>
+            </div>
+          </Seccion>
+
+          <Seccion titulo="Cantidad y bultos">
+            {tipo === "Salida" && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium text-slate-600">Tipo de retiro</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTipoRetiro("pallet_completo")}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                        tipoRetiro === "pallet_completo" ? "border-2 border-slate-800 bg-slate-100 text-slate-800" : "border-slate-300 bg-white text-slate-500"
+                      }`}
+                    >
+                      Pallet completo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTipoRetiro("bultos_sueltos")}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                        tipoRetiro === "bultos_sueltos" ? "border-2 border-slate-800 bg-slate-100 text-slate-800" : "border-slate-300 bg-white text-slate-500"
+                      }`}
+                    >
+                      Bultos sueltos
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {tipoRetiro === "pallet_completo"
+                    ? "La cantidad de abajo son pallets enteros que se retiran."
+                    : "La cantidad de abajo son bultos retirados; el pallet se libera solo cuando se vacía por completo."}
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label={esSalidaBultosSueltos ? "Cantidad de bultos retirados *" : "Cantidad *"}>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={cantidad}
+                  onChange={(e) => {
+                    setCantidad(e.target.value);
+                    setExceso(null);
+                  }}
+                  className={inputClass}
+                />
+              </Campo>
+              <Campo label="Unidad">
+                <select value={unidadMedida} onChange={(e) => setUnidadMedida(e.target.value)} className={inputClass}>
                   <option>Pallet</option>
                   <option>Cajas</option>
                   <option>Und</option>
                   <option>Saco</option>
                 </select>
+              </Campo>
+            </div>
+
+            {tipo === "Ingreso" && (
+              <div>
                 <button
                   type="button"
-                  onClick={handleCrearProductoInline}
-                  disabled={crearProducto.isPending || !nuevoProductoNombre.trim()}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                  onClick={() => setMostrarDetalleBultos((v) => !v)}
+                  className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
                 >
-                  <Plus size={15} /> Agregar
+                  {mostrarDetalleBultos ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  Detalle de bultos (opcional) — para calcular retiros parciales más adelante
                 </button>
+
+                {mostrarDetalleBultos && (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                    <label className="mb-3 flex items-center justify-between gap-3">
+                      <span className="text-sm text-slate-600">¿Los pallets traen cantidades distintas de bultos?</span>
+                      <input
+                        type="checkbox"
+                        checked={palletsDistintos}
+                        onChange={(e) => setPalletsDistintos(e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                    </label>
+
+                    {!palletsDistintos ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <Campo label="Bultos por pallet">
+                          <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
+                        </Campo>
+                        <Campo label="Unidad del bulto">
+                          <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={inputClass} disabled={!cantidadBultos}>
+                            <option>Saco</option>
+                            <option>Cajas</option>
+                            <option>Und</option>
+                          </select>
+                        </Campo>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        <p className="text-xs text-slate-500">
+                          Indica cuántos bultos trae cada pallet. Primero define la "Cantidad" de pallets arriba.
+                        </p>
+                        {detalleBultos.length === 0 ? (
+                          <p className="text-xs text-amber-700">Define primero la cantidad de pallets.</p>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            {detalleBultos.map((valor, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <span className="w-16 flex-shrink-0 text-xs font-medium text-slate-500">Pallet {i + 1}</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={valor}
+                                  onChange={(e) => {
+                                    const copia = [...detalleBultos];
+                                    copia[i] = e.target.value;
+                                    setDetalleBultos(copia);
+                                  }}
+                                  className={`${inputClass} flex-1`}
+                                />
+                              </div>
+                            ))}
+                            <Campo label="Unidad del bulto">
+                              <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={`${inputClass} max-w-[160px]`}>
+                                <option>Saco</option>
+                                <option>Cajas</option>
+                                <option>Und</option>
+                              </select>
+                            </Campo>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+            )}
+          </Seccion>
+
+          <Seccion titulo="Ubicación y fecha">
+            <div className="grid grid-cols-2 gap-4">
+              <Campo label="División *">
+                {tipo === "Salida" && idCliente === "" ? (
+                  <select disabled className={`${inputClass} opacity-50`}>
+                    <option>Selecciona un cliente primero</option>
+                  </select>
+                ) : tipo === "Salida" && cargandoStockDivision ? (
+                  <select disabled className={`${inputClass} opacity-50`}>
+                    <option>Cargando...</option>
+                  </select>
+                ) : tipo === "Salida" && stockPorDivisionCliente && stockPorDivisionCliente.length === 0 ? (
+                  <select disabled className={`${inputClass} opacity-50`}>
+                    <option>Este cliente no tiene stock en ninguna división</option>
+                  </select>
+                ) : (
+                  <select value={idDivision} onChange={(e) => { setIdDivision(e.target.value ? Number(e.target.value) : ""); setExceso(null); }} className={inputClass}>
+                    <option value="">Selecciona...</option>
+                    {(tipo === "Salida" ? stockPorDivisionCliente ?? [] : divisiones ?? []).map((d) => (
+                      <option key={d.id_division} value={d.id_division}>
+                        {d.nombre}
+                        {tipo === "Salida" && "pallets" in d ? ` (${d.pallets} pallets de este cliente)` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {tipo === "Salida" && stockClienteEnDivisionSeleccionada && (
+                  <span className="mt-1 text-xs text-slate-400">
+                    Este cliente tiene {stockClienteEnDivisionSeleccionada.pallets} pallets ahí.
+                  </span>
+                )}
+                {tipo === "Ingreso" && divisionSeleccionada?.capacidad_maxima && (
+                  <span className="mt-1 text-xs text-slate-400">
+                    Ocupación actual: {divisionSeleccionada.ocupacion_actual ?? 0}/{divisionSeleccionada.capacidad_maxima} pallets
+                  </span>
+                )}
+              </Campo>
+              <Campo label="Fecha *">
+                <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
+              </Campo>
             </div>
-          )}
 
-          <div>
-            <span className="mb-1.5 block text-sm font-medium text-slate-600">Modo</span>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setModo("Contenedor")}
-                className={`rounded-xl border py-2.5 text-sm font-medium transition ${
-                  modo === "Contenedor" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
-                }`}
-              >
-                Contenedor
-              </button>
-              <button
-                type="button"
-                onClick={() => setModo("Carga suelta")}
-                className={`rounded-xl border py-2.5 text-sm font-medium transition ${
-                  modo === "Carga suelta" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
-                }`}
-              >
-                Carga suelta
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Campo label="N° de contenedor">
-              <input value={numContenedor} onChange={(e) => setNumContenedor(e.target.value)} className={inputClass} placeholder="HLBU2680426" />
+            <Campo label="Observaciones">
+              <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className={`${inputClass} h-16 resize-none`} />
             </Campo>
-            <Campo label="N° Declaración / Traspaso">
-              <input value={numDeclaracion} onChange={(e) => setNumDeclaracion(e.target.value)} className={inputClass} placeholder="Texto libre" />
-            </Campo>
-          </div>
-
-          {tipo === "Salida" && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-amber-800">Tipo de retiro</span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTipoRetiro("pallet_completo")}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                      tipoRetiro === "pallet_completo" ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
-                    }`}
-                  >
-                    Pallet completo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTipoRetiro("bultos_sueltos")}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                      tipoRetiro === "bultos_sueltos" ? "border-2 border-amber-800 bg-amber-100 text-amber-900" : "border-slate-300 bg-white text-slate-500"
-                    }`}
-                  >
-                    Bultos sueltos
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs leading-relaxed text-amber-800">
-                {tipoRetiro === "pallet_completo"
-                  ? "Se retiran pallets enteros: la cantidad de abajo descuenta esos pallets directamente de la ocupación."
-                  : 'Se retiran solo algunos bultos/sacos/cajas: el sistema calcula solo cuando los bultos retirados completan un pallet (requiere que el ingreso haya indicado "Bultos por pallet"). Mientras queden bultos dentro, el pallet sigue ocupando su posición y se sigue facturando normal.'}
-              </p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <Campo label={esSalidaBultosSueltos ? "Cantidad de bultos retirados *" : "Cantidad *"}>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={cantidad}
-                onChange={(e) => {
-                  setCantidad(e.target.value);
-                  setExceso(null);
-                }}
-                className={inputClass}
-              />
-            </Campo>
-            <Campo label="Unidad">
-              <select value={unidadMedida} onChange={(e) => setUnidadMedida(e.target.value)} className={inputClass}>
-                <option>Pallet</option>
-                <option>Cajas</option>
-                <option>Und</option>
-                <option>Saco</option>
-              </select>
-            </Campo>
-          </div>
-
-          {tipo === "Ingreso" && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <label className="mb-3 flex items-center justify-between gap-3">
-                <span className="text-sm font-medium text-slate-600">¿Los pallets traen cantidades distintas de bultos?</span>
-                <input
-                  type="checkbox"
-                  checked={palletsDistintos}
-                  onChange={(e) => setPalletsDistintos(e.target.checked)}
-                  className="h-4 w-4"
-                />
-              </label>
-
-              {!palletsDistintos ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <Campo label="Bultos por pallet">
-                    <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
-                    <span className="mt-1 text-xs text-slate-400">
-                      Cuántos bultos/sacos/cajas trae CADA pallet (todos iguales), para calcular retiros parciales más adelante.
-                    </span>
-                  </Campo>
-                  <Campo label="Unidad del bulto">
-                    <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={inputClass} disabled={!cantidadBultos}>
-                      <option>Saco</option>
-                      <option>Cajas</option>
-                      <option>Und</option>
-                    </select>
-                  </Campo>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs text-slate-500">
-                    Indica cuántos bultos trae cada pallet (uno por fila). Primero define la "Cantidad" de pallets arriba.
-                  </p>
-                  {detalleBultos.length === 0 ? (
-                    <p className="text-xs text-amber-700">Define primero la cantidad de pallets.</p>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {detalleBultos.map((valor, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="w-16 flex-shrink-0 text-xs font-medium text-slate-500">Pallet {i + 1}</span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={valor}
-                            onChange={(e) => {
-                              const copia = [...detalleBultos];
-                              copia[i] = e.target.value;
-                              setDetalleBultos(copia);
-                            }}
-                            className={`${inputClass} flex-1`}
-                          />
-                        </div>
-                      ))}
-                      <Campo label="Unidad del bulto">
-                        <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={`${inputClass} max-w-[160px]`}>
-                          <option>Saco</option>
-                          <option>Cajas</option>
-                          <option>Und</option>
-                        </select>
-                      </Campo>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <Campo label="División *">
-              <select value={idDivision} onChange={(e) => { setIdDivision(e.target.value ? Number(e.target.value) : ""); setExceso(null); }} className={inputClass}>
-                <option value="">Selecciona...</option>
-                {divisiones?.map((d) => (
-                  <option key={d.id_division} value={d.id_division}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
-              {divisionSeleccionada?.capacidad_maxima && (
-                <span className="mt-1 text-xs text-slate-400">
-                  Ocupación actual: {divisionSeleccionada.ocupacion_actual ?? 0}/{divisionSeleccionada.capacidad_maxima} pallets
-                </span>
-              )}
-            </Campo>
-            <Campo label="Fecha *">
-              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
-            </Campo>
-          </div>
-
-          <Campo label="Observaciones">
-            <textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className={`${inputClass} h-16 resize-none`} />
-          </Campo>
+          </Seccion>
 
           {exceso && (
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
@@ -503,30 +562,34 @@ export function RegistrarMovimientoModal({
               </button>
             </div>
           )}
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-700">Validación y aprobación</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Este movimiento queda registrado como aprobado por ti, según el flujo confirmado con almacén (el Coordinador
-              valida por correo antes de ingresarlo al sistema).
-            </p>
-          </div>
         </form>
 
-        <div className="flex justify-end gap-2 border-t border-slate-200 px-6 py-4">
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={(e) => handleSubmit(e, false)}
-            disabled={guardando}
-            className="rounded-lg bg-[#18193B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#242550] disabled:opacity-50"
-          >
-            {guardando ? "Guardando..." : editando ? "Guardar cambios" : `Registrar ${tipo.toLowerCase()}`}
-          </button>
+        <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-6 py-4">
+          <p className="text-xs text-slate-400">Queda registrado como aprobado por ti.</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, false)}
+              disabled={guardando}
+              className="rounded-lg bg-[#18193B] px-4 py-2 text-sm font-semibold text-white hover:bg-[#242550] disabled:opacity-50"
+            >
+              {guardando ? "Guardando..." : editando ? "Guardar cambios" : `Registrar ${tipo.toLowerCase()}`}
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Seccion({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">{titulo}</h3>
+      {children}
     </div>
   );
 }

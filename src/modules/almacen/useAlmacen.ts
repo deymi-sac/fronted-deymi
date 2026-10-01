@@ -26,6 +26,14 @@ export function useHistorialCapacidad(id_division: number | null) {
   });
 }
 
+export function useDetalleOcupacionDivision(id_division: number | null) {
+  return useQuery({
+    queryKey: ["almacen", "divisiones", id_division, "detalle"],
+    queryFn: () => api.detalleOcupacionDivision(id_division!),
+    enabled: id_division !== null,
+  });
+}
+
 // ---------- Clientes ----------
 export function useClientesAlmacen(incluirArchivados = false) {
   return useQuery({
@@ -48,6 +56,14 @@ export function useActualizarClienteAlmacen() {
     mutationFn: ({ id, payload }: { id: number; payload: Partial<api.CrearClientePayload> }) =>
       api.actualizarCliente(id, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["almacen", "clientes"] }),
+  });
+}
+
+export function useStockPorClientePorDivision(id_cliente_almacen: number | null) {
+  return useQuery({
+    queryKey: ["almacen", "clientes", id_cliente_almacen, "stock-por-division"],
+    queryFn: () => api.stockPorClientePorDivision(id_cliente_almacen!),
+    enabled: id_cliente_almacen !== null,
   });
 }
 
