@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { isAxiosError } from "axios";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, X } from "lucide-react";
 import {
   useClientesAlmacen,
   useDivisiones,
@@ -17,6 +17,25 @@ const NUEVO_PRODUCTO = "__nuevo__";
 
 const MOTIVOS_INGRESO = ["N° solicitud de traslado", "Traspaso interno dentro de ZED"];
 const MOTIVOS_SALIDA = ["Nacionalizada", "Reexpedición marítima", "Reexpedición terrestre", "Traspaso interno dentro de ZED"];
+
+interface GrupoBultos {
+  cantidadPallets: string;
+  bultosPorPallet: string;
+}
+
+// Agrupa un detalle plano [50,50,50,20] en grupos [{cantidadPallets:3, bultosPorPallet:50}, {cantidadPallets:1, bultosPorPallet:20}].
+function detalleAGrupos(detalle: number[]): GrupoBultos[] {
+  if (detalle.length === 0) return [{ cantidadPallets: "", bultosPorPallet: "" }];
+  const grupos: GrupoBultos[] = [];
+  let i = 0;
+  while (i < detalle.length) {
+    let j = i;
+    while (j < detalle.length && detalle[j] === detalle[i]) j++;
+    grupos.push({ cantidadPallets: String(j - i), bultosPorPallet: String(detalle[i]) });
+    i = j;
+  }
+  return grupos;
+}
 
 export function RegistrarMovimientoModal({
   onClose,
@@ -49,8 +68,8 @@ export function RegistrarMovimientoModal({
   );
   const [unidadBultos, setUnidadBultos] = useState(movimientoEditar?.unidad_bultos ?? "Saco");
   const [palletsDistintos, setPalletsDistintos] = useState((movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0);
-  const [listaBultosPorPallet, setListaBultosPorPallet] = useState(
-    (movimientoEditar?.detalle_bultos_pallets ?? []).join(", ")
+  const [gruposBultos, setGruposBultos] = useState<GrupoBultos[]>(
+    detalleAGrupos(movimientoEditar?.detalle_bultos_pallets ?? [])
   );
   const [mostrarDetalleBultos, setMostrarDetalleBultos] = useState(
     !!movimientoEditar?.cantidad_bultos || (movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0
@@ -86,25 +105,39 @@ export function RegistrarMovimientoModal({
   }, [tipo, idCliente, stockPorDivisionCliente, idDivision]);
 
   // No se puede asumir ningún patrón (un pallet puede traer 50 y otro 20, sin relación entre
-  // sí), así que en vez de calcular algo, se escriben los bultos de cada pallet en un solo
-  // cuadro de texto separados por coma/espacio/salto de línea — mucho más rápido que un input
-  // por pallet cuando hay 20-30 pallets.
+  // sí), así que se agrupa por "cuántos pallets tienen tal cantidad de bultos" — mucho más
+  // rápido que escribir o calcular 20-30 valores cuando en la práctica suelen venir en pocos
+  // grupos (ej. "29 pallets de 50" + "1 pallet de 20").
   const distintoCalculo = useMemo(() => {
     if (tipo !== "Ingreso" || !palletsDistintos) return null;
-    const valores = listaBultosPorPallet
-      .split(/[\s,]+/)
-      .map((v) => v.trim())
-      .filter((v) => v.length > 0);
-    if (valores.length === 0) return null;
-    if (!valores.every((v) => /^\d+(\.\d+)?$/.test(v) && Number(v) > 0)) return { detalle: [], pallets: 0, invalido: true as const };
-    const detalle = valores.map(Number);
+    const filas = gruposBultos.filter((g) => g.cantidadPallets.trim() !== "" || g.bultosPorPallet.trim() !== "");
+    if (filas.length === 0) return null;
+    const todasValidas = filas.every(
+      (g) =>
+        /^\d+$/.test(g.cantidadPallets.trim()) &&
+        Number(g.cantidadPallets) > 0 &&
+        /^\d+(\.\d+)?$/.test(g.bultosPorPallet.trim()) &&
+        Number(g.bultosPorPallet) > 0
+    );
+    if (!todasValidas) return { detalle: [], pallets: 0, invalido: true as const };
+    const detalle = filas.flatMap((g) => Array(Number(g.cantidadPallets)).fill(Number(g.bultosPorPallet)));
     return { pallets: detalle.length, detalle, total: detalle.reduce((a, b) => a + b, 0), invalido: false as const };
-  }, [tipo, palletsDistintos, listaBultosPorPallet]);
+  }, [tipo, palletsDistintos, gruposBultos]);
 
   // La "Cantidad" de pallets queda determinada por el cálculo de arriba en este modo.
   useEffect(() => {
     if (distintoCalculo && !distintoCalculo.invalido) setCantidad(String(distintoCalculo.pallets));
   }, [distintoCalculo]);
+
+  function actualizarGrupoBultos(i: number, campo: keyof GrupoBultos, valor: string) {
+    setGruposBultos((prev) => prev.map((g, idx) => (idx === i ? { ...g, [campo]: valor } : g)));
+  }
+  function agregarGrupoBultos() {
+    setGruposBultos((prev) => [...prev, { cantidadPallets: "", bultosPorPallet: "" }]);
+  }
+  function quitarGrupoBultos(i: number) {
+    setGruposBultos((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
+  }
 
   function handleCrearProductoInline() {
     if (!nuevoProductoNombre.trim() || idCliente === "") return;
@@ -194,7 +227,7 @@ export function RegistrarMovimientoModal({
       return;
     }
     if (esIngresoConDetalle && !detalleCompleto) {
-      setError("Escribe los bultos de cada pallet (números separados por coma o espacio), o desactiva \"pallets con cantidades distintas\".");
+      setError("Completa los grupos de pallets (cantidad y bultos de cada uno), o desactiva \"pallets con cantidades distintas\".");
       return;
     }
     if (necesitaPalletsOcupados && (!palletsOcupados || Number(palletsOcupados) <= 0)) {
@@ -499,18 +532,47 @@ export function RegistrarMovimientoModal({
                       </div>
                     ) : (
                       <div className="flex flex-col gap-3">
-                        <Campo label="Bultos de cada pallet">
-                          <textarea
-                            value={listaBultosPorPallet}
-                            onChange={(e) => setListaBultosPorPallet(e.target.value)}
-                            placeholder="Ej: 50, 20, 35, 50, 50, 18..."
-                            className={`${inputClass} h-20 resize-none`}
-                          />
-                          <span className="mt-1 text-xs text-slate-400">
-                            Un número por pallet, en el orden que quieras, separados por coma o espacio. Cada pallet puede tener una
-                            cantidad distinta.
-                          </span>
-                        </Campo>
+                        <p className="text-xs text-slate-500">
+                          Agrupa los pallets por cuántos bultos trae cada uno, ej. "29 pallets de 50 bultos" + "1 pallet de 20 bultos".
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {gruposBultos.map((g, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Cantidad de pallets"
+                                value={g.cantidadPallets}
+                                onChange={(e) => actualizarGrupoBultos(i, "cantidadPallets", e.target.value)}
+                                className={`${inputClass} flex-1`}
+                              />
+                              <span className="flex-shrink-0 text-xs text-slate-500">pallet(s) de</span>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Bultos c/u"
+                                value={g.bultosPorPallet}
+                                onChange={(e) => actualizarGrupoBultos(i, "bultosPorPallet", e.target.value)}
+                                className={`${inputClass} flex-1`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => quitarGrupoBultos(i)}
+                                disabled={gruposBultos.length <= 1}
+                                className="flex-shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:opacity-30"
+                              >
+                                <X size={15} />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={agregarGrupoBultos}
+                            className="flex w-fit items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                          >
+                            <Plus size={13} /> Agregar grupo
+                          </button>
+                        </div>
                         <Campo label="Unidad del bulto">
                           <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={`${inputClass} max-w-[160px]`}>
                             <option>Saco</option>
@@ -519,7 +581,7 @@ export function RegistrarMovimientoModal({
                           </select>
                         </Campo>
                         {distintoCalculo?.invalido && (
-                          <p className="text-xs text-red-600">Algún valor no es un número válido.</p>
+                          <p className="text-xs text-red-600">Completa cantidad y bultos en cada grupo con números válidos.</p>
                         )}
                         {distintoCalculo && !distintoCalculo.invalido && (
                           <p className="text-xs font-medium text-slate-600">
