@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2, FileDown } from "lucide-react";
 import { useMovimientos, useClientesAlmacen, useDivisiones, useEliminarMovimiento } from "./useAlmacen";
@@ -8,6 +8,8 @@ import { Pill, formatearFecha, inputClassGenerico, descargarBlob, totalBultosMov
 import { exportarKardex } from "./almacen.api";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
+
+const POR_PAGINA = 15;
 
 export default function AlmacenMovimientosPage() {
   const puedeOperar = puedeOperarAlmacen(getCurrentUser());
@@ -19,6 +21,7 @@ export default function AlmacenMovimientosPage() {
   const [cliente, setCliente] = useState<number | "">("");
   const [division, setDivision] = useState<number | "">("");
   const [tipo, setTipo] = useState<string>("");
+  const [pagina, setPagina] = useState(1);
 
   async function handleExportarKardex() {
     setExportando(true);
@@ -56,6 +59,12 @@ export default function AlmacenMovimientosPage() {
     division: division === "" ? undefined : division,
     tipo: tipo || undefined,
   });
+
+  useEffect(() => setPagina(1), [cliente, division, tipo]);
+
+  const totalPaginas = Math.max(1, Math.ceil((movimientos?.length ?? 0) / POR_PAGINA));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const movimientosPagina = (movimientos ?? []).slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
 
   return (
     <div className="min-h-full bg-slate-50 p-6">
@@ -147,7 +156,7 @@ export default function AlmacenMovimientosPage() {
                 </tr>
               </thead>
               <tbody>
-                {movimientos.map((m) => (
+                {movimientosPagina.map((m) => (
                   <tr key={m.id_movimiento} className="border-b border-slate-100 transition hover:bg-slate-50">
                     <td className="px-4 py-3.5 text-sm text-slate-600">{formatearFecha(m.fecha)}</td>
                     <td className="px-4 py-3.5">
@@ -219,6 +228,34 @@ export default function AlmacenMovimientosPage() {
                 ))}
               </tbody>
             </table>
+            {totalPaginas > 1 && (
+              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+                <span className="text-xs text-slate-500">
+                  {(paginaActual - 1) * POR_PAGINA + 1}–{Math.min(paginaActual * POR_PAGINA, movimientos.length)} de {movimientos.length}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPagina(paginaActual - 1)}
+                    disabled={paginaActual === 1}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    Anterior
+                  </button>
+                  <span className="px-2 text-xs text-slate-500">
+                    Página {paginaActual} de {totalPaginas}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPagina(paginaActual + 1)}
+                    disabled={paginaActual === totalPaginas}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
