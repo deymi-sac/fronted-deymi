@@ -318,6 +318,8 @@ export interface ControlDiario {
   saldo_final: number;
   pallets_facturables: number;
   costo_dia: number | null;
+  unidades: Record<string, { ingresos: number; salidas: number; saldo_final: number; facturables: number; costo_dia: number | null }>;
+  costo_total_dia: number | null;
 }
 
 export interface CierreMensual {
@@ -333,6 +335,7 @@ export interface CierreMensual {
   pallet_dias_facturados: number;
   monto_a_facturar: number | null;
   productos_por_unidad: ProductoFacturado[];
+  unidades_en_control: string[];
   monto_total: number | null;
   control_diario: ControlDiario[];
 }
