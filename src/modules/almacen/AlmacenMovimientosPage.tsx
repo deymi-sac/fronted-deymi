@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
-import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2, FileDown } from "lucide-react";
+import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2, FileDown, Boxes, Package } from "lucide-react";
 import { useMovimientos, useClientesAlmacen, useDivisiones, useEliminarMovimiento } from "./useAlmacen";
 import { RegistrarMovimientoModal } from "./RegistrarMovimientoModal";
 import { VerMovimientoModal } from "./VerMovimientoModal";
-import { Pill, formatearFecha, inputClassGenerico, descargarBlob, totalBultosMovimiento } from "./AlmacenUI";
+import { Pill, formatearFecha, inputClassGenerico, descargarBlob, totalBultosMovimiento, KpiCard } from "./AlmacenUI";
 import { exportarKardex } from "./almacen.api";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
@@ -62,6 +62,8 @@ export default function AlmacenMovimientosPage() {
 
   useEffect(() => setPagina(1), [cliente, division, tipo]);
 
+  const clienteSeleccionado = cliente === "" ? null : clientes?.find((c) => c.id_cliente_almacen === cliente) ?? null;
+
   const totalPaginas = Math.max(1, Math.ceil((movimientos?.length ?? 0) / POR_PAGINA));
   const paginaActual = Math.min(pagina, totalPaginas);
   const movimientosPagina = (movimientos ?? []).slice((paginaActual - 1) * POR_PAGINA, paginaActual * POR_PAGINA);
@@ -117,6 +119,16 @@ export default function AlmacenMovimientosPage() {
           <option value="Salida">Solo salidas</option>
         </select>
       </div>
+
+      {clienteSeleccionado && (
+        <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <KpiCard icon={<Boxes size={20} />} title="Stock real" value={clienteSeleccionado.stock_real ?? 0} description={clienteSeleccionado.razon_social} />
+          <KpiCard icon={<Package size={20} />} title="Pallets" value={clienteSeleccionado.stock_actual ?? 0} description="Pallets en almacén" />
+          {Object.entries(clienteSeleccionado.unidades ?? {}).map(([unidad, cantidad]) => (
+            <KpiCard key={unidad} icon={<Package size={20} />} title={unidad} value={cantidad} description={`${unidad.toLowerCase()} en almacén`} />
+          ))}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (

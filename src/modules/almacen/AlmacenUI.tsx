@@ -119,6 +119,14 @@ export function capacidadBultosMovimiento(m: MovimientoAlmacen): string | null {
   return null;
 }
 
+// Desglose de lo que tiene un cliente: "12 pallets · 100 cajas · 15 rollos".
+export function desgloseStock(pallets: number, unidades: Record<string, number> = {}): string {
+  const partes: string[] = [];
+  if (pallets > 0) partes.push(`${pallets} ${pallets === 1 ? "pallet" : "pallets"}`);
+  for (const [unidad, cantidad] of Object.entries(unidades)) partes.push(`${cantidad} ${unidad.toLowerCase()}`);
+  return partes.length > 0 ? partes.join(" · ") : "Sin stock";
+}
+
 export const UNIDADES_ESTANDAR = ["Pallet", "Cajas", "Und", "Saco"];
 const OTRA_UNIDAD = "__otra__";
 

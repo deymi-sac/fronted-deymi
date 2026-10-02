@@ -12,7 +12,7 @@ import {
   PolarAngleAxis,
 } from "recharts";
 import { useDashboardAlmacen } from "./useAlmacen";
-import { KpiCard, AlertaCard } from "./AlmacenUI";
+import { KpiCard, AlertaCard, desgloseStock } from "./AlmacenUI";
 
 const COLOR_INGRESO = "#16a34a";
 const COLOR_SALIDA = "#2563eb";
@@ -69,7 +69,12 @@ export default function AlmacenDashboardPage() {
 
       {/* 6 KPIs */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiCard icon={<Boxes size={20} />} title="Stock actual" value={kpis.stock_actual} description="Pallets/unidades en todo el almacén" />
+        <KpiCard
+          icon={<Boxes size={20} />}
+          title="Stock actual"
+          value={kpis.stock_actual}
+          description={`${kpis.stock_pallets} pallets + ${kpis.stock_unidades} cajas/otras unidades`}
+        />
         <KpiCard icon={<ArrowDownToLine size={20} />} title="Ingresos del mes" value={kpis.ingresos_mes} description="Registrados este mes" />
         <KpiCard icon={<ArrowUpFromLine size={20} />} title="Salidas del mes" value={kpis.salidas_mes} description="Registradas este mes" />
         <KpiCard icon={<Users size={20} />} title="Clientes con stock" value={kpis.clientes_con_stock} description="De los clientes activos" />
@@ -129,7 +134,7 @@ export default function AlmacenDashboardPage() {
                   tickLine={false}
                 />
                 <Tooltip />
-                <Bar dataKey="pallets" name="Pallets" fill="#18193B" radius={[0, 6, 6, 0]} isAnimationActive={false} />
+                <Bar dataKey="stock_real" name="Stock real" fill="#18193B" radius={[0, 6, 6, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -205,8 +210,8 @@ export default function AlmacenDashboardPage() {
         {/* Ocupación por cliente en m² y pallets */}
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-sm font-semibold text-slate-700">Ocupación por cliente (m² y pallets)</h2>
-            <p className="text-xs text-slate-400">Un cliente puede ocupar pocas posiciones pero mucho espacio físico.</p>
+            <h2 className="text-sm font-semibold text-slate-700">Ocupación por cliente (stock real y m²)</h2>
+            <p className="text-xs text-slate-400">Pallets más cajas y otras unidades; cada una cuenta como un pallet (1.2 m²).</p>
           </div>
           {ocupacion_por_cliente.length === 0 ? (
             <div className="flex min-h-[140px] items-center justify-center text-sm text-slate-400">Sin stock registrado todavía.</div>
@@ -215,7 +220,8 @@ export default function AlmacenDashboardPage() {
               <thead>
                 <tr className="bg-slate-50">
                   <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Pallets</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Detalle</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Stock real</th>
                   <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">m²</th>
                 </tr>
               </thead>
@@ -223,7 +229,8 @@ export default function AlmacenDashboardPage() {
                 {ocupacion_por_cliente.map((c) => (
                   <tr key={c.razon_social} className="border-t border-slate-100">
                     <td className="px-4 py-2.5 text-sm text-slate-700">{c.razon_social}</td>
-                    <td className="px-4 py-2.5 text-right text-sm tabular-nums text-slate-600">{c.pallets}</td>
+                    <td className="px-4 py-2.5 text-sm text-slate-500">{desgloseStock(c.pallets, c.unidades)}</td>
+                    <td className="px-4 py-2.5 text-right text-sm font-medium tabular-nums text-slate-700">{c.stock_real}</td>
                     <td className="px-4 py-2.5 text-right text-sm tabular-nums text-slate-600">{c.m2} m²</td>
                   </tr>
                 ))}

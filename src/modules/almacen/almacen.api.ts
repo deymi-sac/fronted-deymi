@@ -74,6 +74,8 @@ export interface ClienteAlmacen {
   creado_en: string;
   productos: ProductoAlmacen[];
   stock_actual?: number;
+  unidades?: Record<string, number>;
+  stock_real?: number;
 }
 
 export interface CrearClientePayload {
@@ -268,6 +270,8 @@ export interface AlertaAlmacen {
 
 export interface KpisAlmacen {
   stock_actual: number;
+  stock_pallets: number;
+  stock_unidades: number;
   ingresos_mes: number;
   salidas_mes: number;
   clientes_con_stock: number;
@@ -296,6 +300,8 @@ export interface OcupacionAlmacen {
 export interface OcupacionPorCliente {
   razon_social: string;
   pallets: number;
+  unidades: Record<string, number>;
+  stock_real: number;
   m2: number;
 }
 

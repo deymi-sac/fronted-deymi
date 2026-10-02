@@ -3,7 +3,7 @@ import { Building2, Plus, XCircle, Archive, RotateCcw, Pencil } from "lucide-rea
 import { isAxiosError } from "axios";
 import { useClientesAlmacen, useArchivarClienteAlmacen } from "./useAlmacen";
 import { getCurrentUser, puedeEditarClientesAlmacen } from "../auth/auth.utils";
-import { Pill, formatearMoneda, formatearFecha } from "./AlmacenUI";
+import { Pill, formatearMoneda, formatearFecha, desgloseStock } from "./AlmacenUI";
 import { CrearClienteModal } from "./CrearClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
 import type { ClienteAlmacen } from "./almacen.api";
@@ -89,7 +89,7 @@ export default function AlmacenClientesPage() {
                 <tr className="border-b border-slate-200 bg-slate-50">
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Cliente</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">RUC</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock actual</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Stock real</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Tarifa (US$/m² mes)</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Vencimiento contrato</th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Estado</th>
@@ -103,7 +103,14 @@ export default function AlmacenClientesPage() {
                   <tr key={c.id_cliente_almacen} className="border-b border-slate-100 transition hover:bg-slate-50">
                     <td className="px-4 py-4 font-medium text-slate-800">{c.razon_social}</td>
                     <td className="px-4 py-4 text-sm text-slate-600">{c.ruc ?? "—"}</td>
-                    <td className="px-4 py-4 text-sm text-slate-600">{c.stock_actual ?? 0} pallets</td>
+                    <td className="px-4 py-4 text-sm text-slate-600">
+                      <div className="flex flex-col leading-tight">
+                        <span className="font-semibold text-slate-800">{c.stock_real ?? 0}</span>
+                        {Object.keys(c.unidades ?? {}).length > 0 && (
+                          <span className="mt-0.5 text-xs text-slate-400">{desgloseStock(c.stock_actual ?? 0, c.unidades)}</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-4 text-sm text-slate-500">
                       {c.tarifa_mensual_m2 ? `US$ ${c.tarifa_mensual_m2}` : "Por definir"}
                     </td>
