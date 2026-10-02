@@ -90,8 +90,53 @@ export default function AlmacenFacturacionPage() {
             <ResumenTile label="Tarifa diaria/pallet" value={cierre.tarifa_diaria_pallet !== null ? `US$ ${cierre.tarifa_diaria_pallet.toFixed(2)}` : "Pendiente"} />
             <ResumenTile label="Pallets al cierre" value={String(cierre.pallets_al_cierre)} />
             <ResumenTile label="Pallet-día facturados" value={cierre.pallet_dias_facturados.toLocaleString("es-PE")} />
-            <ResumenTile label="Monto a facturar" value={formatearMoneda(cierre.monto_a_facturar)} destacado />
+            <ResumenTile label="Monto a facturar (total)" value={formatearMoneda(cierre.monto_total)} destacado />
           </div>
+
+          {cierre.productos_por_unidad.length > 0 && (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 px-5 py-4">
+                <h2 className="text-sm font-semibold text-slate-700">Productos facturados por unidad</h2>
+                <p className="text-xs text-slate-400">
+                  Cajas, rollos, etc.: unidades en almacén cada día × tarifa diaria por unidad (se define en la ficha del cliente).
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      {["Producto", "Tarifa/día", "Al inicio", "Ingresos", "Salidas", "Al cierre", "Unidad-día", "Monto"].map((h, i) => (
+                        <th
+                          key={h}
+                          className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500 ${i === 0 ? "text-left" : "text-right"}`}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cierre.productos_por_unidad.map((p) => (
+                      <tr key={p.id_producto} className="border-b border-slate-50">
+                        <td className="px-4 py-2 text-sm text-slate-700">
+                          {p.nombre} <span className="text-xs text-slate-400">({p.unidad_medida.toLowerCase()})</span>
+                        </td>
+                        <td className="px-4 py-2 text-right text-sm tabular-nums text-slate-500">
+                          {p.tarifa_diaria !== null ? `US$ ${p.tarifa_diaria}` : "Pendiente"}
+                        </td>
+                        <td className="px-4 py-2 text-right text-sm tabular-nums text-slate-500">{p.unidades_al_inicio}</td>
+                        <td className="px-4 py-2 text-right text-sm tabular-nums text-green-600">{p.ingresos || ""}</td>
+                        <td className="px-4 py-2 text-right text-sm tabular-nums text-blue-600">{p.salidas || ""}</td>
+                        <td className="px-4 py-2 text-right text-sm tabular-nums text-slate-700">{p.unidades_al_cierre}</td>
+                        <td className="px-4 py-2 text-right text-sm tabular-nums font-medium text-slate-800">{p.unidad_dias_facturados}</td>
+                        <td className="px-4 py-2 text-right text-sm tabular-nums text-slate-700">{formatearMoneda(p.monto_a_facturar)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {cierre.tarifa_mensual_m2 === null && (
             <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">

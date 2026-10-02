@@ -60,6 +60,7 @@ export interface ProductoAlmacen {
   nombre: string;
   unidad_medida: string;
   activo: boolean;
+  tarifa_diaria?: string | null;
   stock_actual?: number;
 }
 
@@ -129,6 +130,7 @@ export async function crearProducto(payload: {
   id_cliente_almacen: number;
   nombre: string;
   unidad_medida: string;
+  tarifa_diaria?: number | null;
 }): Promise<ProductoAlmacen> {
   const { data } = await api.post<ProductoAlmacen>("/almacen/productos", payload);
   return data;
@@ -136,7 +138,7 @@ export async function crearProducto(payload: {
 
 export async function actualizarProducto(
   id_producto: number,
-  payload: Partial<{ nombre: string; unidad_medida: string; activo: boolean }>
+  payload: Partial<{ nombre: string; unidad_medida: string; activo: boolean; tarifa_diaria: number | null }>
 ): Promise<ProductoAlmacen> {
   const { data } = await api.put<ProductoAlmacen>(`/almacen/productos/${id_producto}`, payload);
   return data;
@@ -330,7 +332,22 @@ export interface CierreMensual {
   pallets_al_cierre: number;
   pallet_dias_facturados: number;
   monto_a_facturar: number | null;
+  productos_por_unidad: ProductoFacturado[];
+  monto_total: number | null;
   control_diario: ControlDiario[];
+}
+
+export interface ProductoFacturado {
+  id_producto: number;
+  nombre: string;
+  unidad_medida: string;
+  tarifa_diaria: number | null;
+  unidades_al_inicio: number;
+  ingresos: number;
+  salidas: number;
+  unidades_al_cierre: number;
+  unidad_dias_facturados: number;
+  monto_a_facturar: number | null;
 }
 
 export async function obtenerCierreMensual(idCliente: number, anio: number, mes: number): Promise<CierreMensual> {

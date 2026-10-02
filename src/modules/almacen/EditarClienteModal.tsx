@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Plus, Trash2 } from "lucide-react";
-import { useActualizarClienteAlmacen, useCrearProductoAlmacen, useEliminarProductoAlmacen, useProductosDeCliente } from "./useAlmacen";
+import {
+  useActualizarClienteAlmacen,
+  useActualizarProductoAlmacen,
+  useCrearProductoAlmacen,
+  useEliminarProductoAlmacen,
+  useProductosDeCliente,
+} from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
 import { UnidadSelect } from "./AlmacenUI";
 import type { ClienteAlmacen } from "./almacen.api";
@@ -21,7 +27,9 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
 
   const [nuevoProducto, setNuevoProducto] = useState("");
   const [nuevaUnidad, setNuevaUnidad] = useState("Pallet");
+  const [nuevaTarifa, setNuevaTarifa] = useState("");
   const [errorProducto, setErrorProducto] = useState<string | null>(null);
+  const actualizarProducto = useActualizarProductoAlmacen();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,9 +58,17 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
     if (!nuevoProducto.trim()) return;
     setErrorProducto(null);
     crearProducto.mutate(
-      { id_cliente_almacen: cliente.id_cliente_almacen, nombre: nuevoProducto.trim(), unidad_medida: nuevaUnidad },
       {
-        onSuccess: () => setNuevoProducto(""),
+        id_cliente_almacen: cliente.id_cliente_almacen,
+        nombre: nuevoProducto.trim(),
+        unidad_medida: nuevaUnidad.trim(),
+        tarifa_diaria: nuevaUnidad !== "Pallet" && nuevaTarifa ? Number(nuevaTarifa) : null,
+      },
+      {
+        onSuccess: () => {
+          setNuevoProducto("");
+          setNuevaTarifa("");
+        },
         onError: (err) => {
           setErrorProducto(
             isAxiosError(err) ? err.response?.data?.error ?? "No se pudo agregar el producto" : "No se pudo agregar el producto"
@@ -129,6 +145,14 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
                 <span className="text-xs text-slate-400">
                   {p.stock_actual ?? 0} {p.unidad_medida.toLowerCase()}
                 </span>
+                {p.unidad_medida !== "Pallet" && (
+                  <TarifaProducto
+                    key={`${p.id_producto}-${p.tarifa_diaria ?? ""}`}
+                    inicial={p.tarifa_diaria ?? ""}
+                    unidad={p.unidad_medida}
+                    onGuardar={(valor) => actualizarProducto.mutate({ id: p.id_producto, payload: { tarifa_diaria: valor } })}
+                  />
+                )}
                 <button
                   type="button"
                   title="Eliminar producto"
@@ -152,6 +176,17 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
             />
             <div className="flex gap-2">
               <UnidadSelect value={nuevaUnidad} onChange={setNuevaUnidad} className={`${inputClass} flex-1`} />
+              {nuevaUnidad !== "Pallet" && nuevaUnidad.trim() !== "" && (
+                <input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={nuevaTarifa}
+                  onChange={(e) => setNuevaTarifa(e.target.value)}
+                  placeholder={`US$/${nuevaUnidad.toLowerCase()}/día`}
+                  className={`${inputClass} w-36`}
+                />
+              )}
               <button
                 type="button"
                 onClick={handleAgregarProducto}
@@ -165,6 +200,35 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
         </div>
       </div>
     </div>
+  );
+}
+
+// Tarifa diaria por unidad (US$) de un producto que no se cobra por pallet; se guarda al salir del campo.
+function TarifaProducto({
+  inicial,
+  unidad,
+  onGuardar,
+}: {
+  inicial: string;
+  unidad: string;
+  onGuardar: (valor: number | null) => void;
+}) {
+  const [valor, setValor] = useState(inicial);
+  return (
+    <input
+      type="number"
+      min="0"
+      step="0.0001"
+      value={valor}
+      onChange={(e) => setValor(e.target.value)}
+      onBlur={() => {
+        const nuevo = valor === "" ? null : Number(valor);
+        if (nuevo !== (inicial === "" ? null : Number(inicial))) onGuardar(nuevo);
+      }}
+      placeholder={`US$/${unidad.toLowerCase()}/día`}
+      title={`Tarifa diaria por ${unidad.toLowerCase()} (US$)`}
+      className="w-28 rounded-md border border-slate-300 px-2 py-1 text-right text-xs outline-none focus:border-slate-500"
+    />
   );
 }
 

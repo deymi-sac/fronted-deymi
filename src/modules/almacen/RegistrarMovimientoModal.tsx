@@ -179,7 +179,9 @@ export function RegistrarMovimientoModal({
     [stockPorDivisionCliente, idDivision]
   );
 
-  const esSalidaBultosSueltos = tipo === "Salida" && tipoRetiro === "bultos_sueltos";
+  // Un retiro en cajas/sacos/rollos (cualquier unidad que no sea Pallet) siempre es por unidades
+  // sueltas: nunca "pallet completo".
+  const esSalidaBultosSueltos = tipo === "Salida" && (tipoRetiro === "bultos_sueltos" || unidadMedida !== "Pallet");
   const esIngresoConDetalle = tipo === "Ingreso" && palletsDistintos;
   const detalleCompleto = esIngresoConDetalle && distintoCalculo !== null && !distintoCalculo.invalido && distintoCalculo.pallets > 0;
   // Si el Ingreso se registra en una unidad que no es "Pallet" (ej. 1400 Cajas), hace falta
@@ -213,7 +215,7 @@ export function RegistrarMovimientoModal({
             ? unidadBultos
             : undefined,
       detalle_bultos_pallets: detalleCompleto ? distintoCalculo!.detalle : undefined,
-      libera_pallet: tipo === "Salida" ? tipoRetiro === "pallet_completo" : undefined,
+      libera_pallet: tipo === "Salida" ? !esSalidaBultosSueltos : undefined,
       fecha,
       observaciones: observaciones.trim() || undefined,
       forzar_exceso_capacidad: forzar,
@@ -229,10 +231,6 @@ export function RegistrarMovimientoModal({
     }
     if (esIngresoConDetalle && !detalleCompleto) {
       setError("Completa los grupos de pallets (cantidad y bultos de cada uno), o desactiva \"pallets con cantidades distintas\".");
-      return;
-    }
-    if (necesitaPalletsOcupados && (!palletsOcupados || Number(palletsOcupados) <= 0)) {
-      setError("Indica cuántos pallets ocupa esta carga.");
       return;
     }
 
@@ -414,7 +412,12 @@ export function RegistrarMovimientoModal({
           </Seccion>
 
           <Seccion titulo="Cantidad y bultos">
-            {tipo === "Salida" && (
+            {tipo === "Salida" && unidadMedida !== "Pallet" && (
+              <p className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
+                Retiro en {unidadMedida.toLowerCase()}: se descuenta del stock de {unidadMedida.toLowerCase()} del producto.
+              </p>
+            )}
+            {tipo === "Salida" && unidadMedida === "Pallet" && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-medium text-slate-600">Tipo de retiro</span>
@@ -471,7 +474,7 @@ export function RegistrarMovimientoModal({
             </div>
 
             {necesitaPalletsOcupados && (
-              <Campo label="Pallets que ocupa *">
+              <Campo label="Pallets que ocupa (opcional)">
                 <input
                   type="number"
                   min="0"
@@ -480,7 +483,8 @@ export function RegistrarMovimientoModal({
                   className={`${inputClass} max-w-[160px]`}
                 />
                 <span className="mt-1 text-xs text-slate-400">
-                  Cuántos pallets ocupa físicamente esta carga, para calcular ocupación y facturación (independiente de la cantidad de {unidadMedida.toLowerCase()}).
+                  Solo si esta carga ocupa pallets en la división (afecta capacidad y facturación por pallet). Si el cliente se
+                  factura por {unidadMedida.toLowerCase()}, déjalo vacío.
                 </span>
               </Campo>
             )}
@@ -611,12 +615,12 @@ export function RegistrarMovimientoModal({
                     {(tipo === "Salida" ? stockPorDivisionCliente ?? [] : divisiones ?? []).map((d) => (
                       <option key={d.id_division} value={d.id_division}>
                         {d.nombre}
-                        {tipo === "Salida" && "pallets" in d ? ` (${d.pallets} pallets de este cliente)` : ""}
+                        {tipo === "Salida" && "pallets" in d && d.pallets > 0 ? ` (${d.pallets} pallets de este cliente)` : ""}
                       </option>
                     ))}
                   </select>
                 )}
-                {tipo === "Salida" && stockClienteEnDivisionSeleccionada && (
+                {tipo === "Salida" && stockClienteEnDivisionSeleccionada && stockClienteEnDivisionSeleccionada.pallets > 0 && (
                   <span className="mt-1 text-xs text-slate-400">
                     Este cliente tiene {stockClienteEnDivisionSeleccionada.pallets} pallets ahí.
                   </span>
