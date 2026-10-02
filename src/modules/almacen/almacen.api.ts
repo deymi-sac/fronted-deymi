@@ -132,10 +132,15 @@ export interface IngresoDisponible {
   division: string;
   pallets_restantes: number;
   bultos_restantes: number | null;
+  // Solo cuando se consultan ingresos de cajas/rollos/etc.
+  unidad_medida?: string;
+  unidades_restantes?: number;
 }
 
-export async function ingresosDisponibles(id_cliente_almacen: number): Promise<IngresoDisponible[]> {
-  const { data } = await api.get<IngresoDisponible[]>(`/almacen/clientes/${id_cliente_almacen}/ingresos-disponibles`);
+export async function ingresosDisponibles(id_cliente_almacen: number, unidad?: string): Promise<IngresoDisponible[]> {
+  const { data } = await api.get<IngresoDisponible[]>(`/almacen/clientes/${id_cliente_almacen}/ingresos-disponibles`, {
+    params: unidad ? { unidad } : undefined,
+  });
   return data;
 }
 

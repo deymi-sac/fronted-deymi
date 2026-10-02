@@ -70,10 +70,10 @@ export function useStockPorClientePorDivision(
   });
 }
 
-export function useIngresosDisponibles(id_cliente_almacen: number | null) {
+export function useIngresosDisponibles(id_cliente_almacen: number | null, unidad?: string) {
   return useQuery({
-    queryKey: ["almacen", "clientes", id_cliente_almacen, "ingresos-disponibles"],
-    queryFn: () => api.ingresosDisponibles(id_cliente_almacen!),
+    queryKey: ["almacen", "clientes", id_cliente_almacen, "ingresos-disponibles", unidad ?? "Pallet"],
+    queryFn: () => api.ingresosDisponibles(id_cliente_almacen!, unidad),
     enabled: id_cliente_almacen !== null,
   });
 }
