@@ -46,6 +46,9 @@ export function VerMovimientoModal({ movimiento, onClose }: { movimiento: Movimi
           {capacidadBultosMovimiento(movimiento) && (
             <Campo label="Capacidad por pallet">{capacidadBultosMovimiento(movimiento)}</Campo>
           )}
+          {movimiento.tipo === "Salida" && movimiento.id_movimiento_origen && (
+            <Campo label="Sale del ingreso">N° {movimiento.ingreso_origen_declaracion ?? "s/n"}</Campo>
+          )}
           {movimiento.tipo === "Salida" && (
             <Campo label="Tipo de retiro">
               {movimiento.cantidad_bultos && movimiento.cantidad_bultos > 0

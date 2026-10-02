@@ -9,9 +9,10 @@ import {
   useActualizarMovimiento,
   useCrearProductoAlmacen,
   useStockPorClientePorDivision,
+  useIngresosDisponibles,
 } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
-import { UnidadSelect } from "./AlmacenUI";
+import { UnidadSelect, formatearFecha } from "./AlmacenUI";
 import type { ExcesoCapacidadInfo, MovimientoAlmacen } from "./almacen.api";
 
 const NUEVO_PRODUCTO = "__nuevo__";
@@ -82,6 +83,7 @@ export function RegistrarMovimientoModal({
     movimientoEditar?.unidad_medida === "Bultos" ? "bultos_sueltos" : "pallet_completo"
   );
   const [idDivision, setIdDivision] = useState<number | "">(movimientoEditar?.id_division ?? "");
+  const [idOrigen, setIdOrigen] = useState<number | "">(movimientoEditar?.id_movimiento_origen ?? "");
   const [fecha, setFecha] = useState(() => movimientoEditar?.fecha.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
   const [observaciones, setObservaciones] = useState(movimientoEditar?.observaciones ?? "");
 
@@ -96,19 +98,38 @@ export function RegistrarMovimientoModal({
 
   // Al registrar una Salida, solo tiene sentido elegir una división donde el cliente
   // realmente tenga stock — evita retiros registrados en la división equivocada.
-  // En un retiro de bultos sueltos, solo las divisiones donde hay pallets con bultos registrados.
-  const retiraBultosSueltos = tipo === "Salida" && unidadMedida === "Pallet" && tipoRetiro === "bultos_sueltos";
+  // Un retiro de pallets o bultos se descuenta de un ingreso concreto (por su N° de declaración);
+  // la división y el producto salen de ese ingreso. Los retiros en cajas/otras unidades siguen
+  // eligiendo la división.
+  const retiraPallets = tipo === "Salida" && unidadMedida === "Pallet";
+  const retiraBultosSueltos = retiraPallets && tipoRetiro === "bultos_sueltos";
+  const { data: ingresosCliente, isLoading: cargandoIngresos } = useIngresosDisponibles(
+    retiraPallets && idCliente !== "" ? idCliente : null
+  );
+  const ingresosOpcion = (ingresosCliente ?? []).filter((i) =>
+    retiraBultosSueltos ? (i.bultos_restantes ?? 0) > 0 : i.pallets_restantes > 0
+  );
+  // Un retiro anterior sin ingreso asociado se puede seguir editando como estaba.
+  const esRetiroAntiguo = !!movimientoEditar && movimientoEditar.tipo === "Salida" && !movimientoEditar.id_movimiento_origen;
+
+  function elegirIngreso(valor: string) {
+    const id = valor ? Number(valor) : "";
+    setIdOrigen(id);
+    const ingreso = ingresosOpcion.find((i) => i.id_movimiento === id);
+    setIdDivision(ingreso ? ingreso.id_division : "");
+    setIdProducto(ingreso?.id_producto ?? "");
+  }
+
   const { data: stockPorDivisionCliente, isLoading: cargandoStockDivision } = useStockPorClientePorDivision(
-    tipo === "Salida" && idCliente !== "" ? idCliente : null,
-    retiraBultosSueltos ? { soloConBultos: true, ...(idProducto !== "" ? { id_producto: Number(idProducto) } : {}) } : {}
+    tipo === "Salida" && !retiraPallets && idCliente !== "" ? idCliente : null
   );
 
   useEffect(() => {
-    if (tipo !== "Salida" || idCliente === "" || !stockPorDivisionCliente) return;
+    if (tipo !== "Salida" || retiraPallets || idCliente === "" || !stockPorDivisionCliente) return;
     if (idDivision !== "" && !stockPorDivisionCliente.some((d) => d.id_division === idDivision)) {
       setIdDivision("");
     }
-  }, [tipo, idCliente, stockPorDivisionCliente, idDivision]);
+  }, [tipo, retiraPallets, idCliente, stockPorDivisionCliente, idDivision]);
 
   // No se puede asumir ningún patrón (un pallet puede traer 50 y otro 20, sin relación entre
   // sí), así que se agrupa por "cuántos pallets tienen tal cantidad de bultos" — mucho más
@@ -172,7 +193,18 @@ export function RegistrarMovimientoModal({
     setMotivo(nuevo === "Ingreso" ? MOTIVOS_INGRESO[0] : MOTIVOS_SALIDA[0]);
     setExceso(null);
     setIdDivision("");
+    setIdOrigen("");
   }
+
+  // Si cambia el modo de retiro o la unidad, el ingreso elegido puede dejar de servir.
+  useEffect(() => {
+    if (!retiraPallets || idOrigen === "" || !ingresosCliente) return;
+    if (movimientoEditar?.id_movimiento_origen === idOrigen) return;
+    if (!ingresosOpcion.some((i) => i.id_movimiento === idOrigen)) {
+      setIdOrigen("");
+      setIdDivision("");
+    }
+  }, [retiraPallets, retiraBultosSueltos, idOrigen, ingresosCliente]);
 
   const divisionSeleccionada = useMemo(
     () => divisiones?.find((d) => d.id_division === idDivision) ?? null,
@@ -212,6 +244,7 @@ export function RegistrarMovimientoModal({
           : tipo === "Ingreso" && !esIngresoConDetalle && cantidadBultos
             ? Number(cantidadBultos)
             : undefined,
+      id_movimiento_origen: retiraPallets && idOrigen !== "" ? Number(idOrigen) : undefined,
       detalle_bultos_pallets: detalleCompleto ? distintoCalculo!.detalle : undefined,
       libera_pallet: tipo === "Salida" ? unidadMedida === "Pallet" && tipoRetiro === "pallet_completo" : undefined,
       fecha,
@@ -223,6 +256,10 @@ export function RegistrarMovimientoModal({
   function handleSubmit(e: React.FormEvent, forzar = false) {
     e.preventDefault();
     setError(null);
+    if (retiraPallets && idOrigen === "" && !esRetiroAntiguo) {
+      setError("Elige el ingreso (N° de declaración) del que sale este retiro.");
+      return;
+    }
     if (!idCliente || !idDivision || !cantidad || Number(cantidad) <= 0) {
       setError("Cliente, división y cantidad (mayor a 0) son obligatorios.");
       return;
@@ -311,6 +348,7 @@ export function RegistrarMovimientoModal({
                     setIdCliente(e.target.value ? Number(e.target.value) : "");
                     setIdProducto("");
                     setIdDivision("");
+                    setIdOrigen("");
                     setMostrarNuevoProducto(false);
                     setNuevoProductoNombre("");
                   }}
@@ -575,9 +613,51 @@ export function RegistrarMovimientoModal({
           </Seccion>
 
           <Seccion titulo="Ubicación y fecha">
+            {retiraPallets && (
+              <Campo label={`Sale del ingreso (N° de declaración) ${esRetiroAntiguo ? "" : "*"}`}>
+                {idCliente === "" ? (
+                  <select disabled className={`${inputClass} opacity-50`}>
+                    <option>Selecciona un cliente primero</option>
+                  </select>
+                ) : cargandoIngresos ? (
+                  <select disabled className={`${inputClass} opacity-50`}>
+                    <option>Cargando...</option>
+                  </select>
+                ) : (
+                  <select value={idOrigen} onChange={(e) => elegirIngreso(e.target.value)} className={inputClass}>
+                    <option value="">
+                      {ingresosOpcion.length === 0
+                        ? retiraBultosSueltos
+                          ? "No hay ingresos con bultos registrados para retirar"
+                          : "Este cliente no tiene pallets en almacén"
+                        : "Selecciona..."}
+                    </option>
+                    {idOrigen !== "" && !ingresosOpcion.some((i) => i.id_movimiento === idOrigen) && (
+                      <option value={idOrigen}>N° {movimientoEditar?.ingreso_origen_declaracion ?? "s/n"} (ingreso actual)</option>
+                    )}
+                    {ingresosOpcion.map((i) => (
+                      <option key={i.id_movimiento} value={i.id_movimiento}>
+                        {i.num_declaracion ? `N° ${i.num_declaracion}` : "Sin N°"} · {formatearFecha(i.fecha)} · {i.producto ?? "sin producto"} ·{" "}
+                        {i.pallets_restantes} pallets
+                        {i.bultos_restantes !== null ? ` · ${i.bultos_restantes} bultos` : ""} · {i.division}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <span className="mt-1 text-xs text-slate-400">
+                  Los pallets y bultos se descuentan solo de este ingreso; la división y el producto salen de él.
+                </span>
+              </Campo>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <Campo label="División *">
-                {tipo === "Salida" && idCliente === "" ? (
+                {retiraPallets ? (
+                  <input
+                    disabled
+                    value={divisiones?.find((d) => d.id_division === idDivision)?.nombre ?? "Se toma del ingreso elegido"}
+                    className={`${inputClass} bg-slate-100 text-slate-500`}
+                  />
+                ) : tipo === "Salida" && idCliente === "" ? (
                   <select disabled className={`${inputClass} opacity-50`}>
                     <option>Selecciona un cliente primero</option>
                   </select>

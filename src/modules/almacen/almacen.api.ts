@@ -122,6 +122,23 @@ export async function stockPorClientePorDivision(
   return data;
 }
 
+export interface IngresoDisponible {
+  id_movimiento: number;
+  num_declaracion: string | null;
+  fecha: string;
+  id_producto: number | null;
+  producto: string | null;
+  id_division: number;
+  division: string;
+  pallets_restantes: number;
+  bultos_restantes: number | null;
+}
+
+export async function ingresosDisponibles(id_cliente_almacen: number): Promise<IngresoDisponible[]> {
+  const { data } = await api.get<IngresoDisponible[]>(`/almacen/clientes/${id_cliente_almacen}/ingresos-disponibles`);
+  return data;
+}
+
 export async function archivarCliente(id: number, archivar: boolean): Promise<ClienteAlmacen> {
   const { data } = await api.put<ClienteAlmacen>(`/almacen/clientes/${id}/archivar`, { archivar });
   return data;
@@ -177,6 +194,7 @@ export interface MovimientoAlmacen {
   cantidad: string;
   unidad_medida: string;
   pallets_ocupados: number | null;
+  id_movimiento_origen: number | null;
   cantidad_bultos: number | null;
   unidad_bultos: string | null;
   detalle_bultos_pallets: number[];
@@ -192,6 +210,7 @@ export interface MovimientoAlmacen {
   registrado_por: { nombre: string; apellido: string };
   aprobador: { nombre: string; apellido: string } | null;
   pallets_impacto?: number;
+  ingreso_origen_declaracion?: string | null;
 }
 
 export interface CrearMovimientoPayload {
@@ -206,6 +225,7 @@ export interface CrearMovimientoPayload {
   cantidad: number;
   unidad_medida: string;
   pallets_ocupados?: number;
+  id_movimiento_origen?: number;
   cantidad_bultos?: number;
   unidad_bultos?: string;
   detalle_bultos_pallets?: number[];

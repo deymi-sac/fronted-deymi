@@ -70,6 +70,14 @@ export function useStockPorClientePorDivision(
   });
 }
 
+export function useIngresosDisponibles(id_cliente_almacen: number | null) {
+  return useQuery({
+    queryKey: ["almacen", "clientes", id_cliente_almacen, "ingresos-disponibles"],
+    queryFn: () => api.ingresosDisponibles(id_cliente_almacen!),
+    enabled: id_cliente_almacen !== null,
+  });
+}
+
 export function useArchivarClienteAlmacen() {
   const queryClient = useQueryClient();
   return useMutation({
