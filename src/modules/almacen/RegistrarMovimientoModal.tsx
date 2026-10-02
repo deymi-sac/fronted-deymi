@@ -11,6 +11,7 @@ import {
   useStockPorClientePorDivision,
 } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
+import { UnidadSelect } from "./AlmacenUI";
 import type { ExcesoCapacidadInfo, MovimientoAlmacen } from "./almacen.api";
 
 const NUEVO_PRODUCTO = "__nuevo__";
@@ -365,12 +366,7 @@ export function RegistrarMovimientoModal({
                   className={`${inputClass} mb-2 w-full`}
                 />
                 <div className="flex gap-2">
-                  <select value={nuevoProductoUnidad} onChange={(e) => setNuevoProductoUnidad(e.target.value)} className={`${inputClass} flex-1`}>
-                    <option>Pallet</option>
-                    <option>Cajas</option>
-                    <option>Und</option>
-                    <option>Saco</option>
-                  </select>
+                  <UnidadSelect value={nuevoProductoUnidad} onChange={setNuevoProductoUnidad} className={`${inputClass} flex-1`} />
                   <button
                     type="button"
                     onClick={handleCrearProductoInline}
@@ -470,12 +466,7 @@ export function RegistrarMovimientoModal({
                 )}
               </Campo>
               <Campo label="Unidad">
-                <select value={unidadMedida} onChange={(e) => setUnidadMedida(e.target.value)} className={inputClass}>
-                  <option>Pallet</option>
-                  <option>Cajas</option>
-                  <option>Und</option>
-                  <option>Saco</option>
-                </select>
+                <UnidadSelect value={unidadMedida} onChange={setUnidadMedida} className={inputClass} />
               </Campo>
             </div>
 
@@ -523,11 +514,13 @@ export function RegistrarMovimientoModal({
                           <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
                         </Campo>
                         <Campo label="Unidad del bulto">
-                          <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={inputClass} disabled={!cantidadBultos}>
-                            <option>Saco</option>
-                            <option>Cajas</option>
-                            <option>Und</option>
-                          </select>
+                          <UnidadSelect
+                            value={unidadBultos}
+                            onChange={setUnidadBultos}
+                            opciones={["Saco", "Cajas", "Und"]}
+                            disabled={!cantidadBultos}
+                            className={inputClass}
+                          />
                         </Campo>
                       </div>
                     ) : (
@@ -574,11 +567,12 @@ export function RegistrarMovimientoModal({
                           </button>
                         </div>
                         <Campo label="Unidad del bulto">
-                          <select value={unidadBultos} onChange={(e) => setUnidadBultos(e.target.value)} className={`${inputClass} max-w-[160px]`}>
-                            <option>Saco</option>
-                            <option>Cajas</option>
-                            <option>Und</option>
-                          </select>
+                          <UnidadSelect
+                            value={unidadBultos}
+                            onChange={setUnidadBultos}
+                            opciones={["Saco", "Cajas", "Und"]}
+                            className={`${inputClass} max-w-[160px]`}
+                          />
                         </Campo>
                         {distintoCalculo?.invalido && (
                           <p className="text-xs text-red-600">Completa cantidad y bultos en cada grupo con números válidos.</p>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { MovimientoAlmacen } from "./almacen.api";
 
@@ -94,6 +95,74 @@ export function totalBultosMovimiento(m: MovimientoAlmacen): { total: number; un
   if (m.cantidad_bultos == null) return null;
   const total = m.tipo === "Ingreso" ? m.cantidad_bultos * Number(m.cantidad) : m.cantidad_bultos;
   return { total, unidad: m.unidad_bultos };
+}
+
+export const UNIDADES_ESTANDAR = ["Pallet", "Cajas", "Und", "Saco"];
+const OTRA_UNIDAD = "__otra__";
+
+// Select de unidad con opción de escribir una nueva (ej. "Rollos", "Telas") cuando el cliente
+// trabaja con algo que no está en la lista estándar.
+export function UnidadSelect({
+  value,
+  onChange,
+  className,
+  opciones = UNIDADES_ESTANDAR,
+  disabled,
+}: {
+  value: string;
+  onChange: (valor: string) => void;
+  className: string;
+  opciones?: string[];
+  disabled?: boolean;
+}) {
+  const [modoPersonalizado, setModoPersonalizado] = useState(value !== "" && !opciones.includes(value));
+
+  if (modoPersonalizado) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Ej: Rollos"
+          disabled={disabled}
+          className={className}
+        />
+        <button
+          type="button"
+          title="Volver a la lista"
+          onClick={() => {
+            setModoPersonalizado(false);
+            onChange(opciones[0]!);
+          }}
+          className="flex-shrink-0 rounded-lg px-2 py-1.5 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(e) => {
+        if (e.target.value === OTRA_UNIDAD) {
+          setModoPersonalizado(true);
+          onChange("");
+          return;
+        }
+        onChange(e.target.value);
+      }}
+      className={className}
+    >
+      {opciones.map((u) => (
+        <option key={u}>{u}</option>
+      ))}
+      <option value={OTRA_UNIDAD}>+ Otra unidad...</option>
+    </select>
+  );
 }
 
 export function formatearFecha(iso: string | null) {

@@ -46,7 +46,9 @@ export default function AlmacenProductosPage() {
                 {cliente.productos.map((p) => (
                   <li key={p.id_producto} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
                     <span className="text-slate-700">{p.nombre}</span>
-                    <span className="text-xs text-slate-400">{p.unidad_medida}</span>
+                    <span className="text-xs font-medium text-slate-500">
+                      {p.stock_actual ?? 0} {p.unidad_medida.toLowerCase()}
+                    </span>
                   </li>
                 ))}
               </ul>

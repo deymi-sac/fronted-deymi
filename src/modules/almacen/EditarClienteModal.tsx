@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import { Plus, Trash2 } from "lucide-react";
 import { useActualizarClienteAlmacen, useCrearProductoAlmacen, useEliminarProductoAlmacen, useProductosDeCliente } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
+import { UnidadSelect } from "./AlmacenUI";
 import type { ClienteAlmacen } from "./almacen.api";
 
 export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmacen; onClose: () => void }) {
@@ -125,7 +126,9 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
             {(productos ?? []).map((p) => (
               <li key={p.id_producto} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
                 <span className="flex-1">{p.nombre}</span>
-                <span className="text-xs text-slate-400">{p.unidad_medida}</span>
+                <span className="text-xs text-slate-400">
+                  {p.stock_actual ?? 0} {p.unidad_medida.toLowerCase()}
+                </span>
                 <button
                   type="button"
                   title="Eliminar producto"
@@ -148,12 +151,7 @@ export function EditarClienteModal({ cliente, onClose }: { cliente: ClienteAlmac
               className={`${inputClass} w-full`}
             />
             <div className="flex gap-2">
-              <select value={nuevaUnidad} onChange={(e) => setNuevaUnidad(e.target.value)} className={`${inputClass} flex-1`}>
-                <option>Pallet</option>
-                <option>Cajas</option>
-                <option>Und</option>
-                <option>Saco</option>
-              </select>
+              <UnidadSelect value={nuevaUnidad} onChange={setNuevaUnidad} className={`${inputClass} flex-1`} />
               <button
                 type="button"
                 onClick={handleAgregarProducto}

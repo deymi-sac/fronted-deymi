@@ -24,6 +24,11 @@ export function puedeOperarAlmacen(usuario: UsuarioActual | null): boolean {
   );
 }
 
+/** Facturación también puede editar la ficha de Clientes (tarifas, datos, productos), aunque no opera el resto del almacén. */
+export function puedeEditarClientesAlmacen(usuario: UsuarioActual | null): boolean {
+  return puedeOperarAlmacen(usuario) || usuario?.id_rol === ROLES.FACTURACION;
+}
+
 export function getCurrentUser(): UsuarioActual | null {
   const usuario = localStorage.getItem("usuario");
 

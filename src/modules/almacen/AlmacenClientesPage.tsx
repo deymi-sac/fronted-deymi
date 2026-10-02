@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Building2, Plus, XCircle, Archive, RotateCcw, Pencil } from "lucide-react";
 import { isAxiosError } from "axios";
 import { useClientesAlmacen, useArchivarClienteAlmacen } from "./useAlmacen";
-import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
+import { getCurrentUser, puedeEditarClientesAlmacen } from "../auth/auth.utils";
 import { Pill, formatearMoneda, formatearFecha } from "./AlmacenUI";
 import { CrearClienteModal } from "./CrearClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
 import type { ClienteAlmacen } from "./almacen.api";
 
 export default function AlmacenClientesPage() {
-  const puedeOperar = puedeOperarAlmacen(getCurrentUser());
+  const puedeOperar = puedeEditarClientesAlmacen(getCurrentUser());
   const [incluirArchivados, setIncluirArchivados] = useState(false);
   const { data: clientes, isLoading, isError, refetch } = useClientesAlmacen(incluirArchivados);
   const archivarCliente = useArchivarClienteAlmacen();

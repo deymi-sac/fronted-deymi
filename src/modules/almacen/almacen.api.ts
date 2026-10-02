@@ -60,6 +60,7 @@ export interface ProductoAlmacen {
   nombre: string;
   unidad_medida: string;
   activo: boolean;
+  stock_actual?: number;
 }
 
 export interface ClienteAlmacen {
