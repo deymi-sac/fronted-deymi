@@ -107,8 +107,16 @@ export interface StockPorDivision {
   pallets: number;
 }
 
-export async function stockPorClientePorDivision(id_cliente_almacen: number): Promise<StockPorDivision[]> {
-  const { data } = await api.get<StockPorDivision[]>(`/almacen/clientes/${id_cliente_almacen}/stock-por-division`);
+export async function stockPorClientePorDivision(
+  id_cliente_almacen: number,
+  opciones: { soloConBultos?: boolean; id_producto?: number } = {}
+): Promise<StockPorDivision[]> {
+  const { data } = await api.get<StockPorDivision[]>(`/almacen/clientes/${id_cliente_almacen}/stock-por-division`, {
+    params: {
+      ...(opciones.soloConBultos ? { soloConBultos: "true" } : {}),
+      ...(opciones.id_producto !== undefined ? { id_producto: opciones.id_producto } : {}),
+    },
+  });
   return data;
 }
 

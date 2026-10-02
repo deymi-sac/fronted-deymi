@@ -59,10 +59,13 @@ export function useActualizarClienteAlmacen() {
   });
 }
 
-export function useStockPorClientePorDivision(id_cliente_almacen: number | null) {
+export function useStockPorClientePorDivision(
+  id_cliente_almacen: number | null,
+  opciones: { soloConBultos?: boolean; id_producto?: number } = {}
+) {
   return useQuery({
-    queryKey: ["almacen", "clientes", id_cliente_almacen, "stock-por-division"],
-    queryFn: () => api.stockPorClientePorDivision(id_cliente_almacen!),
+    queryKey: ["almacen", "clientes", id_cliente_almacen, "stock-por-division", opciones],
+    queryFn: () => api.stockPorClientePorDivision(id_cliente_almacen!, opciones),
     enabled: id_cliente_almacen !== null,
   });
 }

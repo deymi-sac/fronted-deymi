@@ -96,8 +96,11 @@ export function RegistrarMovimientoModal({
 
   // Al registrar una Salida, solo tiene sentido elegir una división donde el cliente
   // realmente tenga stock — evita retiros registrados en la división equivocada.
+  // En un retiro de bultos sueltos, solo las divisiones donde hay pallets con bultos registrados.
+  const retiraBultosSueltos = tipo === "Salida" && unidadMedida === "Pallet" && tipoRetiro === "bultos_sueltos";
   const { data: stockPorDivisionCliente, isLoading: cargandoStockDivision } = useStockPorClientePorDivision(
-    tipo === "Salida" && idCliente !== "" ? idCliente : null
+    tipo === "Salida" && idCliente !== "" ? idCliente : null,
+    retiraBultosSueltos ? { soloConBultos: true, ...(idProducto !== "" ? { id_producto: Number(idProducto) } : {}) } : {}
   );
 
   useEffect(() => {
@@ -584,7 +587,11 @@ export function RegistrarMovimientoModal({
                   </select>
                 ) : tipo === "Salida" && stockPorDivisionCliente && stockPorDivisionCliente.length === 0 ? (
                   <select disabled className={`${inputClass} opacity-50`}>
-                    <option>Este cliente no tiene stock en ninguna división</option>
+                    <option>
+                      {retiraBultosSueltos
+                        ? "No hay pallets con bultos registrados para retirar"
+                        : "Este cliente no tiene stock en ninguna división"}
+                    </option>
                   </select>
                 ) : (
                   <select value={idDivision} onChange={(e) => { setIdDivision(e.target.value ? Number(e.target.value) : ""); setExceso(null); }} className={inputClass}>
