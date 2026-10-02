@@ -4,7 +4,7 @@ import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2, FileDown } from "luc
 import { useMovimientos, useClientesAlmacen, useDivisiones, useEliminarMovimiento } from "./useAlmacen";
 import { RegistrarMovimientoModal } from "./RegistrarMovimientoModal";
 import { VerMovimientoModal } from "./VerMovimientoModal";
-import { Pill, formatearFecha, inputClassGenerico, descargarBlob, totalBultosMovimiento, capacidadBultosMovimiento } from "./AlmacenUI";
+import { Pill, formatearFecha, inputClassGenerico, descargarBlob, totalBultosMovimiento } from "./AlmacenUI";
 import { exportarKardex } from "./almacen.api";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
@@ -174,16 +174,7 @@ export default function AlmacenMovimientosPage() {
                       {(() => {
                         const bultos = totalBultosMovimiento(m);
                         if (!bultos) return "—";
-                        const capacidad = capacidadBultosMovimiento(m);
-                        return (
-                          <div className="flex min-w-[170px] flex-col leading-tight">
-                            <span className="font-medium text-slate-700">
-                              {bultos.total}
-                              {bultos.unidad ? " " + bultos.unidad : ""} bultos
-                            </span>
-                            {capacidad && <span className="mt-0.5 text-xs text-slate-400">{capacidad}</span>}
-                          </div>
-                        );
+                        return `${bultos.total}${bultos.unidad ? " " + bultos.unidad : ""} bultos`;
                       })()}
                     </td>
                     <td className="px-4 py-3.5 text-sm text-slate-500">{m.num_declaracion ?? "—"}</td>
