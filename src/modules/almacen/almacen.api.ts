@@ -128,7 +128,7 @@ export async function listarProductosDeCliente(id_cliente_almacen: number): Prom
 export async function crearProducto(payload: {
   id_cliente_almacen: number;
   nombre: string;
-  unidad_medida: string;
+  unidad_medida?: string;
 }): Promise<ProductoAlmacen> {
   const { data } = await api.post<ProductoAlmacen>("/almacen/productos", payload);
   return data;

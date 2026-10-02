@@ -60,14 +60,17 @@ export function RegistrarMovimientoModal({
   const [numContenedor, setNumContenedor] = useState(movimientoEditar?.num_contenedor ?? "");
   const [numDeclaracion, setNumDeclaracion] = useState(movimientoEditar?.num_declaracion ?? "");
   const [cantidad, setCantidad] = useState(movimientoEditar?.cantidad ?? "");
-  const [unidadMedida, setUnidadMedida] = useState(movimientoEditar?.unidad_medida ?? "Pallet");
+  // Un retiro de bultos sueltos se guarda con unidad "Bultos" (los bultos no llevan unidad propia);
+  // en pantalla se edita como Pallet + modo "Bultos sueltos".
+  const [unidadMedida, setUnidadMedida] = useState(
+    movimientoEditar?.unidad_medida === "Bultos" ? "Pallet" : movimientoEditar?.unidad_medida ?? "Pallet"
+  );
   const [palletsOcupados, setPalletsOcupados] = useState(
     movimientoEditar?.pallets_ocupados != null ? String(movimientoEditar.pallets_ocupados) : ""
   );
   const [cantidadBultos, setCantidadBultos] = useState(
     movimientoEditar?.cantidad_bultos != null ? String(movimientoEditar.cantidad_bultos) : ""
   );
-  const [unidadBultos, setUnidadBultos] = useState(movimientoEditar?.unidad_bultos ?? "Saco");
   const [palletsDistintos, setPalletsDistintos] = useState((movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0);
   const [gruposBultos, setGruposBultos] = useState<GrupoBultos[]>(
     detalleAGrupos(movimientoEditar?.detalle_bultos_pallets ?? [])
@@ -76,7 +79,7 @@ export function RegistrarMovimientoModal({
     !!movimientoEditar?.cantidad_bultos || (movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0
   );
   const [tipoRetiro, setTipoRetiro] = useState<"pallet_completo" | "bultos_sueltos">(
-    movimientoEditar?.cantidad_bultos ? "bultos_sueltos" : "pallet_completo"
+    movimientoEditar?.unidad_medida === "Bultos" ? "bultos_sueltos" : "pallet_completo"
   );
   const [idDivision, setIdDivision] = useState<number | "">(movimientoEditar?.id_division ?? "");
   const [fecha, setFecha] = useState(() => movimientoEditar?.fecha.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
@@ -87,7 +90,6 @@ export function RegistrarMovimientoModal({
 
   const [mostrarNuevoProducto, setMostrarNuevoProducto] = useState(false);
   const [nuevoProductoNombre, setNuevoProductoNombre] = useState("");
-  const [nuevoProductoUnidad, setNuevoProductoUnidad] = useState("Pallet");
   const [errorNuevoProducto, setErrorNuevoProducto] = useState<string | null>(null);
 
   const { data: productosCliente } = useProductosDeCliente(idCliente === "" ? null : idCliente);
@@ -144,11 +146,10 @@ export function RegistrarMovimientoModal({
     if (!nuevoProductoNombre.trim() || idCliente === "") return;
     setErrorNuevoProducto(null);
     crearProducto.mutate(
-      { id_cliente_almacen: Number(idCliente), nombre: nuevoProductoNombre.trim(), unidad_medida: nuevoProductoUnidad },
+      { id_cliente_almacen: Number(idCliente), nombre: nuevoProductoNombre.trim() },
       {
         onSuccess: (producto) => {
           setIdProducto(producto.id_producto);
-          setUnidadMedida(producto.unidad_medida);
           setNuevoProductoNombre("");
           setMostrarNuevoProducto(false);
         },
@@ -179,9 +180,9 @@ export function RegistrarMovimientoModal({
     [stockPorDivisionCliente, idDivision]
   );
 
-  // Un retiro en cajas/sacos/rollos (cualquier unidad que no sea Pallet) siempre es por unidades
-  // sueltas: nunca "pallet completo".
-  const esSalidaBultosSueltos = tipo === "Salida" && (tipoRetiro === "bultos_sueltos" || unidadMedida !== "Pallet");
+  // "Bultos sueltos" solo existe en retiros de pallets: descuenta bultos de un pallet (sin unidad)
+  // y libera el pallet únicamente cuando se vacía. Un retiro en cajas/sacos/etc. descuenta unidades.
+  const esSalidaBultosSueltos = tipo === "Salida" && unidadMedida === "Pallet" && tipoRetiro === "bultos_sueltos";
   const esIngresoConDetalle = tipo === "Ingreso" && palletsDistintos;
   const detalleCompleto = esIngresoConDetalle && distintoCalculo !== null && !distintoCalculo.invalido && distintoCalculo.pallets > 0;
   // Si el Ingreso se registra en una unidad que no es "Pallet" (ej. 1400 Cajas), hace falta
@@ -200,7 +201,7 @@ export function RegistrarMovimientoModal({
       num_contenedor: numContenedor.trim() || undefined,
       num_declaracion: numDeclaracion.trim() || undefined,
       cantidad: Number(cantidad),
-      unidad_medida: unidadMedida,
+      unidad_medida: esSalidaBultosSueltos ? "Bultos" : unidadMedida,
       pallets_ocupados: necesitaPalletsOcupados && palletsOcupados ? Number(palletsOcupados) : undefined,
       cantidad_bultos:
         esSalidaBultosSueltos
@@ -208,14 +209,8 @@ export function RegistrarMovimientoModal({
           : tipo === "Ingreso" && !esIngresoConDetalle && cantidadBultos
             ? Number(cantidadBultos)
             : undefined,
-      unidad_bultos:
-        esSalidaBultosSueltos
-          ? unidadMedida
-          : tipo === "Ingreso" && (esIngresoConDetalle ? detalleCompleto : !!cantidadBultos)
-            ? unidadBultos
-            : undefined,
       detalle_bultos_pallets: detalleCompleto ? distintoCalculo!.detalle : undefined,
-      libera_pallet: tipo === "Salida" ? !esSalidaBultosSueltos : undefined,
+      libera_pallet: tipo === "Salida" ? unidadMedida === "Pallet" && tipoRetiro === "pallet_completo" : undefined,
       fecha,
       observaciones: observaciones.trim() || undefined,
       forzar_exceso_capacidad: forzar,
@@ -363,8 +358,7 @@ export function RegistrarMovimientoModal({
                   placeholder="Nombre del producto nuevo"
                   className={`${inputClass} mb-2 w-full`}
                 />
-                <div className="flex gap-2">
-                  <UnidadSelect value={nuevoProductoUnidad} onChange={setNuevoProductoUnidad} className={`${inputClass} flex-1`} />
+                <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={handleCrearProductoInline}
@@ -450,7 +444,7 @@ export function RegistrarMovimientoModal({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${esSalidaBultosSueltos ? "grid-cols-1" : "grid-cols-2"}`}>
               <Campo label={esSalidaBultosSueltos ? "Cantidad de bultos retirados *" : "Cantidad *"}>
                 <input
                   type="number"
@@ -468,9 +462,11 @@ export function RegistrarMovimientoModal({
                   <span className="mt-1 text-xs text-slate-400">Calculado desde el detalle de bultos de abajo.</span>
                 )}
               </Campo>
-              <Campo label="Unidad">
-                <UnidadSelect value={unidadMedida} onChange={setUnidadMedida} className={inputClass} />
-              </Campo>
+              {!esSalidaBultosSueltos && (
+                <Campo label="Unidad">
+                  <UnidadSelect value={unidadMedida} onChange={setUnidadMedida} className={inputClass} />
+                </Campo>
+              )}
             </div>
 
             {necesitaPalletsOcupados && (
@@ -513,20 +509,9 @@ export function RegistrarMovimientoModal({
                     </label>
 
                     {!palletsDistintos ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        <Campo label="Bultos por pallet">
-                          <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={inputClass} />
-                        </Campo>
-                        <Campo label="Unidad del bulto">
-                          <UnidadSelect
-                            value={unidadBultos}
-                            onChange={setUnidadBultos}
-                            opciones={["Saco", "Cajas", "Und"]}
-                            disabled={!cantidadBultos}
-                            className={inputClass}
-                          />
-                        </Campo>
-                      </div>
+                      <Campo label="Bultos por pallet">
+                        <input type="number" min="0" value={cantidadBultos} onChange={(e) => setCantidadBultos(e.target.value)} className={`${inputClass} max-w-[200px]`} />
+                      </Campo>
                     ) : (
                       <div className="flex flex-col gap-3">
                         <p className="text-xs text-slate-500">
@@ -570,20 +555,12 @@ export function RegistrarMovimientoModal({
                             <Plus size={13} /> Agregar grupo
                           </button>
                         </div>
-                        <Campo label="Unidad del bulto">
-                          <UnidadSelect
-                            value={unidadBultos}
-                            onChange={setUnidadBultos}
-                            opciones={["Saco", "Cajas", "Und"]}
-                            className={`${inputClass} max-w-[160px]`}
-                          />
-                        </Campo>
                         {distintoCalculo?.invalido && (
                           <p className="text-xs text-red-600">Completa cantidad y bultos en cada grupo con números válidos.</p>
                         )}
                         {distintoCalculo && !distintoCalculo.invalido && (
                           <p className="text-xs font-medium text-slate-600">
-                            = {distintoCalculo.pallets} pallets, {distintoCalculo.total} {unidadBultos.toLowerCase()} en total.
+                            = {distintoCalculo.pallets} pallets, {distintoCalculo.total} bultos en total.
                           </p>
                         )}
                       </div>
