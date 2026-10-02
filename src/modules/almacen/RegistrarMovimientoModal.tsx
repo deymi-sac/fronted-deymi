@@ -113,6 +113,7 @@ export function RegistrarMovimientoModal({
   const ingresosOpcion = (ingresosCliente ?? []).filter((i) =>
     retiraOtraUnidad ? (i.unidades_restantes ?? 0) > 0 : retiraBultosSueltos ? (i.bultos_restantes ?? 0) > 0 : i.pallets_restantes > 0
   );
+  const ingresoOrigenSeleccionado = idOrigen === "" ? null : ingresosOpcion.find((i) => i.id_movimiento === idOrigen) ?? null;
   // Un retiro anterior sin ingreso asociado se puede seguir editando como estaba.
   const esRetiroAntiguo = !!movimientoEditar && movimientoEditar.tipo === "Salida" && !movimientoEditar.id_movimiento_origen;
 
@@ -260,6 +261,10 @@ export function RegistrarMovimientoModal({
   function handleSubmit(e: React.FormEvent, forzar = false) {
     e.preventDefault();
     setError(null);
+    if (ingresoOrigenSeleccionado && fecha < ingresoOrigenSeleccionado.fecha.slice(0, 10)) {
+      setError("El retiro no puede tener una fecha anterior a la del ingreso elegido.");
+      return;
+    }
     if (retiraDeIngreso && idOrigen === "" && !esRetiroAntiguo) {
       setError("Elige el ingreso (N° de declaración) del que sale este retiro.");
       return;
@@ -705,6 +710,16 @@ export function RegistrarMovimientoModal({
               </Campo>
               <Campo label="Fecha *">
                 <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
+                {fecha > new Date().toLocaleDateString("en-CA") && (
+                  <span className="mt-1 text-xs font-medium text-amber-600">
+                    Fecha futura: el movimiento ya se suma al stock y a los KPI hoy, aunque aún no ocurra.
+                  </span>
+                )}
+                {ingresoOrigenSeleccionado && fecha < ingresoOrigenSeleccionado.fecha.slice(0, 10) && (
+                  <span className="mt-1 text-xs font-medium text-red-600">
+                    El retiro no puede ser anterior al ingreso elegido ({formatearFecha(ingresoOrigenSeleccionado.fecha)}).
+                  </span>
+                )}
               </Campo>
             </div>
 

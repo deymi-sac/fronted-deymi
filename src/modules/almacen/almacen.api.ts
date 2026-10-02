@@ -45,6 +45,8 @@ export interface ClienteEnDivision {
   id_cliente_almacen: number;
   razon_social: string;
   pallets: number;
+  // Cajas, rollos y demás unidades que tiene el cliente en la división (sin Pallet ni Bultos).
+  unidades?: Record<string, number>;
   productos: ProductoEnDivision[];
 }
 
