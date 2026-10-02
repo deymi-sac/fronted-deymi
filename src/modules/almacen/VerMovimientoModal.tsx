@@ -1,4 +1,4 @@
-import { Pill, formatearFecha, totalBultosMovimiento } from "./AlmacenUI";
+import { Pill, formatearFecha, totalBultosMovimiento, capacidadBultosMovimiento } from "./AlmacenUI";
 import type { MovimientoAlmacen } from "./almacen.api";
 
 export function VerMovimientoModal({ movimiento, onClose }: { movimiento: MovimientoAlmacen; onClose: () => void }) {
@@ -40,11 +40,12 @@ export function VerMovimientoModal({ movimiento, onClose }: { movimiento: Movimi
             {(() => {
               const bultos = totalBultosMovimiento(movimiento);
               if (!bultos) return "—";
-              const detalle =
-                movimiento.detalle_bultos_pallets.length > 0 ? ` (${movimiento.detalle_bultos_pallets.join(" + ")} por pallet)` : "";
-              return `${bultos.total}${bultos.unidad ? " " + bultos.unidad : ""}${detalle}`;
+              return `${bultos.total}${bultos.unidad ? " " + bultos.unidad : ""} bultos`;
             })()}
           </Campo>
+          {capacidadBultosMovimiento(movimiento) && (
+            <Campo label="Capacidad por pallet">{capacidadBultosMovimiento(movimiento)}</Campo>
+          )}
           {movimiento.tipo === "Salida" && (
             <Campo label="Tipo de retiro">
               {movimiento.cantidad_bultos && movimiento.cantidad_bultos > 0

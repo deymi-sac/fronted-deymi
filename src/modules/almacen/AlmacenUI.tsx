@@ -97,6 +97,28 @@ export function totalBultosMovimiento(m: MovimientoAlmacen): { total: number; un
   return { total, unidad: m.unidad_bultos };
 }
 
+// Capacidad de bultos de un Ingreso, en palabras: "20 pallets de 20 bultos c/u" cuando todos
+// son iguales, o "10 pallets de 50 + 5 pallets de 30" cuando cambian. Las salidas no tienen.
+export function capacidadBultosMovimiento(m: MovimientoAlmacen): string | null {
+  if (m.tipo !== "Ingreso") return null;
+  const plural = (n: number) => (n === 1 ? "pallet" : "pallets");
+
+  if (m.detalle_bultos_pallets.length > 0) {
+    const grupos = new Map<number, number>();
+    for (const b of m.detalle_bultos_pallets) grupos.set(b, (grupos.get(b) ?? 0) + 1);
+    if (grupos.size === 1) {
+      const [[bultos, pallets]] = [...grupos.entries()] as [[number, number]];
+      return `${pallets} ${plural(pallets)} de ${bultos} bultos c/u`;
+    }
+    return [...grupos.entries()].map(([bultos, pallets]) => `${pallets} ${plural(pallets)} de ${bultos}`).join(" + ");
+  }
+  if (m.cantidad_bultos != null) {
+    const pallets = m.pallets_ocupados ?? Number(m.cantidad);
+    return `${pallets} ${plural(pallets)} de ${m.cantidad_bultos} bultos c/u`;
+  }
+  return null;
+}
+
 export const UNIDADES_ESTANDAR = ["Pallet", "Cajas", "Und", "Saco"];
 const OTRA_UNIDAD = "__otra__";
 
