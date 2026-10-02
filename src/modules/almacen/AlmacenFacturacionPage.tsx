@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { FileDown } from "lucide-react";
 import { useClientesAlmacen, useCierreMensual } from "./useAlmacen";
 import { formatearMoneda, formatearFecha, inputClassGenerico, descargarBlob } from "./AlmacenUI";
@@ -90,7 +90,7 @@ export default function AlmacenFacturacionPage() {
             <ResumenTile label="Tarifa diaria/pallet" value={cierre.tarifa_diaria_pallet !== null ? `US$ ${cierre.tarifa_diaria_pallet.toFixed(2)}` : "Pendiente"} />
             <ResumenTile label="Pallets al cierre" value={String(cierre.pallets_al_cierre)} />
             <ResumenTile label="Pallet-día facturados" value={cierre.pallet_dias_facturados.toLocaleString("es-PE")} />
-            <ResumenTile label="Monto a facturar (total)" value={formatearMoneda(cierre.monto_total)} destacado />
+            <ResumenTile label="Monto a facturar" value={formatearMoneda(cierre.monto_a_facturar)} destacado />
           </div>
 
           {cierre.tarifa_mensual_m2 === null && (
@@ -107,36 +107,17 @@ export default function AlmacenFacturacionPage() {
                 {MESES[mes - 1]} {anio} — {cierre.cliente.razon_social}
               </p>
             </div>
-            <div className="max-h-[420px] overflow-auto">
+            <div className="max-h-[420px] overflow-y-auto">
               <table className="w-full min-w-[700px] border-collapse">
                 <thead className="sticky top-0 bg-slate-50">
-                  {cierre.unidades_en_control.length > 0 && (
-                    <tr className="border-b border-slate-200">
-                      <th />
-                      <th colSpan={6} className="border-l border-slate-200 px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                        Pallets
-                      </th>
-                      {cierre.unidades_en_control.map((u) => (
-                        <th key={u} colSpan={4} className="border-l border-slate-200 px-4 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                          {u}
-                        </th>
-                      ))}
-                      <th className="border-l border-slate-200" />
-                    </tr>
-                  )}
                   <tr className="border-b border-slate-200">
                     <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Fecha</th>
-                    {["Saldo inicial", "Ingresos", "Salidas", "Saldo final", "Facturables", "Costo"].map((h) => (
-                      <th key={h} className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{h}</th>
-                    ))}
-                    {cierre.unidades_en_control.flatMap((u) =>
-                      ["Ingresos", "Salidas", "Saldo", "Costo"].map((h) => (
-                        <th key={`${u}-${h}`} className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">{h}</th>
-                      ))
-                    )}
-                    {cierre.unidades_en_control.length > 0 && (
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Total día</th>
-                    )}
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Saldo inicial</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Ingresos</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Salidas</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Saldo final</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Facturables</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Costo</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,22 +132,6 @@ export default function AlmacenFacturacionPage() {
                       <td className="px-4 py-2 text-right text-sm tabular-nums text-slate-500">
                         {d.costo_dia !== null ? `US$ ${d.costo_dia.toFixed(2)}` : "—"}
                       </td>
-                      {cierre.unidades_en_control.flatMap((u) => {
-                        const x = d.unidades[u];
-                        return [
-                          <td key={`${u}-i`} className="border-l border-slate-100 px-4 py-2 text-right text-sm tabular-nums text-green-600">{x?.ingresos || ""}</td>,
-                          <td key={`${u}-s`} className="px-4 py-2 text-right text-sm tabular-nums text-blue-600">{x?.salidas || ""}</td>,
-                          <td key={`${u}-b`} className="px-4 py-2 text-right text-sm tabular-nums font-medium text-slate-800">{x?.saldo_final ?? 0}</td>,
-                          <td key={`${u}-c`} className="px-4 py-2 text-right text-sm tabular-nums text-slate-500">
-                            {x?.costo_dia != null ? `US$ ${x.costo_dia.toFixed(2)}` : "Pendiente"}
-                          </td>,
-                        ];
-                      })}
-                      {cierre.unidades_en_control.length > 0 && (
-                        <td className="border-l border-slate-100 px-4 py-2 text-right text-sm font-medium tabular-nums text-slate-800">
-                          {d.costo_total_dia !== null ? `US$ ${d.costo_total_dia.toFixed(2)}` : "—"}
-                        </td>
-                      )}
                     </tr>
                   ))}
                 </tbody>

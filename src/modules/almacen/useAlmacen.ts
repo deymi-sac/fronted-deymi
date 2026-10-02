@@ -95,19 +95,6 @@ export function useCrearProductoAlmacen() {
   });
 }
 
-export function useActualizarProductoAlmacen() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof api.actualizarProducto>[1] }) =>
-      api.actualizarProducto(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["almacen", "productos"] });
-      queryClient.invalidateQueries({ queryKey: ["almacen", "clientes"] });
-      queryClient.invalidateQueries({ queryKey: ["almacen", "facturacion"] });
-    },
-  });
-}
-
 export function useEliminarProductoAlmacen() {
   const queryClient = useQueryClient();
   return useMutation({

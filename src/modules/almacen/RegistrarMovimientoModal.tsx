@@ -483,8 +483,8 @@ export function RegistrarMovimientoModal({
                   className={`${inputClass} max-w-[160px]`}
                 />
                 <span className="mt-1 text-xs text-slate-400">
-                  Solo si esta carga ocupa pallets en la división (afecta capacidad y facturación por pallet). Si el cliente se
-                  factura por {unidadMedida.toLowerCase()}, déjalo vacío.
+                  Opcional. Cada {unidadMedida.toLowerCase().replace(/s$/, "")} ingresada ya cuenta como un pallet ocupado en el control
+                  diario de facturación; este dato es solo referencia.
                 </span>
               </Campo>
             )}
