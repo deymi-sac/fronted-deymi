@@ -10,7 +10,7 @@ import { exportarKardex } from "./almacen.api";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
 
-const POR_PAGINA = 15;
+const POR_PAGINA = 10;
 
 export default function AlmacenMovimientosPage() {
   const puedeOperar = puedeOperarAlmacen(getCurrentUser());
