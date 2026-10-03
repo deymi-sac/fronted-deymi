@@ -12,6 +12,16 @@ import type { MovimientoAlmacen } from "./almacen.api";
 
 const POR_PAGINA = 10;
 
+// De "2026-10" a { desde: "2026-10-01", hasta: "2026-10-31" } (primer y último día del mes).
+function rangoDelMes(mes: string): { desde?: string; hasta?: string } {
+  const m = /^(\d{4})-(\d{2})$/.exec(mes);
+  if (!m) return {};
+  const anio = Number(m[1]);
+  const numMes = Number(m[2]);
+  const ultimoDia = new Date(anio, numMes, 0).getDate();
+  return { desde: `${mes}-01`, hasta: `${mes}-${String(ultimoDia).padStart(2, "0")}` };
+}
+
 export default function AlmacenMovimientosPage() {
   const puedeOperar = puedeOperarAlmacen(getCurrentUser());
   const [mostrarModal, setMostrarModal] = useState(false);
@@ -22,8 +32,9 @@ export default function AlmacenMovimientosPage() {
   const [cliente, setCliente] = useState<number | "">("");
   const [division, setDivision] = useState<number | "">("");
   const [tipo, setTipo] = useState<string>("");
+  const [mes, setMes] = useState(""); // "YYYY-MM" o vacío (todos los meses)
   // La página se reinicia sola al cambiar un filtro: se guarda junto a los filtros con los que se eligió.
-  const claveFiltros = `${cliente}|${division}|${tipo}`;
+  const claveFiltros = `${cliente}|${division}|${tipo}|${mes}`;
   const [paginaElegida, setPaginaElegida] = useState({ clave: "", pagina: 1 });
   const pagina = paginaElegida.clave === claveFiltros ? paginaElegida.pagina : 1;
   const setPagina = (n: number) => setPaginaElegida({ clave: claveFiltros, pagina: n });
@@ -63,6 +74,7 @@ export default function AlmacenMovimientosPage() {
     cliente: cliente === "" ? undefined : cliente,
     division: division === "" ? undefined : division,
     tipo: tipo || undefined,
+    ...rangoDelMes(mes),
   });
 
   const clienteSeleccionado = cliente === "" ? null : clientes?.find((c) => c.id_cliente_almacen === cliente) ?? null;
@@ -121,6 +133,25 @@ export default function AlmacenMovimientosPage() {
           <option value="Ingreso">Solo ingresos</option>
           <option value="Salida">Solo salidas</option>
         </select>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="month"
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            title="Filtrar por mes"
+            aria-label="Filtrar por mes"
+            className={inputClassGenerico}
+          />
+          {mes && (
+            <button
+              type="button"
+              onClick={() => setMes("")}
+              className="rounded-lg px-2 py-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            >
+              Todos los meses
+            </button>
+          )}
+        </div>
       </div>
 
       {clienteSeleccionado && (
