@@ -264,6 +264,9 @@ export default function AlmacenMovimientosPage() {
               </tbody>
             </table>
           </div>
+          <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+            Mostrando {movimientosPagina.length} de {movimientos.length} {movimientos.length === 1 ? "movimiento" : "movimientos"}
+          </div>
           </>
         )}
       </div>
