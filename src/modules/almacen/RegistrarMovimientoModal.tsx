@@ -452,7 +452,9 @@ export function RegistrarMovimientoModal({
           <Seccion titulo="Cantidad y bultos">
             {tipo === "Salida" && unidadMedida !== "Pallet" && (
               <p className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-500">
-                Retiro en {unidadMedida.toLowerCase()}: se descuenta del stock de {unidadMedida.toLowerCase()} del producto.
+                {unidadMedida.trim() === ""
+                  ? "Elige o escribe la unidad del retiro (cajas, rollos, sacos...) para ver los ingresos de los que puede salir."
+                  : `Retiro en ${unidadMedida.toLowerCase()}: se descuenta del stock de ${unidadMedida.toLowerCase()} del producto.`}
               </p>
             )}
             {tipo === "Salida" && unidadMedida === "Pallet" && (

@@ -210,11 +210,11 @@ function Zona({
           </p>
         </div>
         <div className="flex items-center gap-3 text-right">
-          <p className="text-2xl font-semibold leading-none text-slate-900">
+          <p className="whitespace-nowrap text-2xl font-semibold leading-none text-slate-900">
             {ocupacion}
             <span className="ml-1 text-xs font-normal text-slate-400">{capacidad ? `/ ${capacidad}` : "pallets"}</span>
           </p>
-          <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${e.pill}`}>
+          <span className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${e.pill}`}>
             {pct !== null ? `${pct}% · ` : ""}
             {e.estado}
           </span>
