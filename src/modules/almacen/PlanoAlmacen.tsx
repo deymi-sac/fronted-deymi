@@ -460,7 +460,7 @@ export function PlanoAlmacen({
   const totalCapacidad = ordenadas.reduce((a, d) => a + (d.capacidad_maxima ?? 0), 0);
   const criticas = ordenadas.filter((d) => d.capacidad_maxima && (ocupacionZona(d) / d.capacidad_maxima) * 100 >= 90).length;
 
-  const clientes = useMemo(() => {
+  const clientes = (() => {
     const mapa = new Map<number, { nombre: string; pallets: number }>();
     for (const { data } of detalles.values()) {
       for (const c of data) {
@@ -469,7 +469,7 @@ export function PlanoAlmacen({
       }
     }
     return [...mapa.entries()].sort((a, b) => b[1].pallets - a[1].pallets);
-  }, [q1.data, q2.data, q3.data]);
+  })();
 
   // Dónde está guardado lo que no son pallets (cajas, rollos...): cliente, cantidad y sección.
   const avisosUnidades = ordenadas.flatMap((d) =>

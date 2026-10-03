@@ -3,7 +3,8 @@ import { Building2, Plus, XCircle, Archive, RotateCcw, Pencil } from "lucide-rea
 import { isAxiosError } from "axios";
 import { useClientesAlmacen, useArchivarClienteAlmacen } from "./useAlmacen";
 import { getCurrentUser, puedeEditarClientesAlmacen } from "../auth/auth.utils";
-import { Pill, formatearMoneda, formatearFecha, desgloseStock } from "./AlmacenUI";
+import { Pill } from "./AlmacenUI";
+import { formatearMoneda, formatearFecha, desgloseStock } from "./almacen.utils";
 import { CrearClienteModal } from "./CrearClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
 import type { ClienteAlmacen } from "./almacen.api";

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { isAxiosError } from "axios";
 import { Plus, XCircle, ClipboardList, Eye, Pencil, Trash2, FileDown, Boxes, Package } from "lucide-react";
 import { useMovimientos, useClientesAlmacen, useDivisiones, useEliminarMovimiento } from "./useAlmacen";
 import { RegistrarMovimientoModal } from "./RegistrarMovimientoModal";
 import { VerMovimientoModal } from "./VerMovimientoModal";
-import { Pill, formatearFecha, inputClassGenerico, descargarBlob, totalBultosMovimiento, KpiCard } from "./AlmacenUI";
+import { Pill, KpiCard } from "./AlmacenUI";
+import { formatearFecha, inputClassGenerico, descargarBlob, totalBultosMovimiento } from "./almacen.utils";
 import { exportarKardex } from "./almacen.api";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
@@ -21,7 +22,11 @@ export default function AlmacenMovimientosPage() {
   const [cliente, setCliente] = useState<number | "">("");
   const [division, setDivision] = useState<number | "">("");
   const [tipo, setTipo] = useState<string>("");
-  const [pagina, setPagina] = useState(1);
+  // La página se reinicia sola al cambiar un filtro: se guarda junto a los filtros con los que se eligió.
+  const claveFiltros = `${cliente}|${division}|${tipo}`;
+  const [paginaElegida, setPaginaElegida] = useState({ clave: "", pagina: 1 });
+  const pagina = paginaElegida.clave === claveFiltros ? paginaElegida.pagina : 1;
+  const setPagina = (n: number) => setPaginaElegida({ clave: claveFiltros, pagina: n });
 
   async function handleExportarKardex() {
     setExportando(true);
@@ -59,8 +64,6 @@ export default function AlmacenMovimientosPage() {
     division: division === "" ? undefined : division,
     tipo: tipo || undefined,
   });
-
-  useEffect(() => setPagina(1), [cliente, division, tipo]);
 
   const clienteSeleccionado = cliente === "" ? null : clientes?.find((c) => c.id_cliente_almacen === cliente) ?? null;
 

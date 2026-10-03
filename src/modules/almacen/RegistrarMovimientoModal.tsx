@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { Plus, ChevronDown, ChevronRight, X } from "lucide-react";
 import {
@@ -12,7 +12,8 @@ import {
   useIngresosDisponibles,
 } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
-import { UnidadSelect, formatearFecha } from "./AlmacenUI";
+import { UnidadSelect } from "./AlmacenUI";
+import { formatearFecha, fechaLocalHoy } from "./almacen.utils";
 import type { ExcesoCapacidadInfo, MovimientoAlmacen } from "./almacen.api";
 
 const NUEVO_PRODUCTO = "__nuevo__";
@@ -84,7 +85,7 @@ export function RegistrarMovimientoModal({
   );
   const [idDivision, setIdDivision] = useState<number | "">(movimientoEditar?.id_division ?? "");
   const [idOrigen, setIdOrigen] = useState<number | "">(movimientoEditar?.id_movimiento_origen ?? "");
-  const [fecha, setFecha] = useState(() => movimientoEditar?.fecha.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
+  const [fecha, setFecha] = useState(() => movimientoEditar?.fecha.slice(0, 10) ?? fechaLocalHoy());
   const [observaciones, setObservaciones] = useState(movimientoEditar?.observaciones ?? "");
 
   const [error, setError] = useState<string | null>(null);
@@ -129,12 +130,6 @@ export function RegistrarMovimientoModal({
     tipo === "Salida" && !retiraDeIngreso && idCliente !== "" ? idCliente : null
   );
 
-  useEffect(() => {
-    if (tipo !== "Salida" || retiraDeIngreso || idCliente === "" || !stockPorDivisionCliente) return;
-    if (idDivision !== "" && !stockPorDivisionCliente.some((d) => d.id_division === idDivision)) {
-      setIdDivision("");
-    }
-  }, [tipo, retiraDeIngreso, idCliente, stockPorDivisionCliente, idDivision]);
 
   // No se puede asumir ningún patrón (un pallet puede traer 50 y otro 20, sin relación entre
   // sí), así que se agrupa por "cuántos pallets tienen tal cantidad de bultos" — mucho más
@@ -157,9 +152,7 @@ export function RegistrarMovimientoModal({
   }, [tipo, palletsDistintos, gruposBultos]);
 
   // La "Cantidad" de pallets queda determinada por el cálculo de arriba en este modo.
-  useEffect(() => {
-    if (distintoCalculo && !distintoCalculo.invalido) setCantidad(String(distintoCalculo.pallets));
-  }, [distintoCalculo]);
+  const cantidadEfectiva = distintoCalculo && !distintoCalculo.invalido ? String(distintoCalculo.pallets) : cantidad;
 
   function actualizarGrupoBultos(i: number, campo: keyof GrupoBultos, valor: string) {
     setGruposBultos((prev) => prev.map((g, idx) => (idx === i ? { ...g, [campo]: valor } : g)));
@@ -201,15 +194,12 @@ export function RegistrarMovimientoModal({
     setIdOrigen("");
   }
 
-  // Si cambia el modo de retiro o la unidad, el ingreso elegido puede dejar de servir.
-  useEffect(() => {
-    if (!retiraDeIngreso || idOrigen === "" || !ingresosCliente) return;
-    if (movimientoEditar?.id_movimiento_origen === idOrigen) return;
-    if (!ingresosOpcion.some((i) => i.id_movimiento === idOrigen)) {
-      setIdOrigen("");
-      setIdDivision("");
-    }
-  }, [retiraDeIngreso, retiraBultosSueltos, idOrigen, ingresosCliente]);
+  // Si cambia el modo de retiro o la unidad, el ingreso elegido deja de servir.
+  function limpiarOrigen() {
+    setIdOrigen("");
+    setIdDivision("");
+    setExceso(null);
+  }
 
   const divisionSeleccionada = useMemo(
     () => divisiones?.find((d) => d.id_division === idDivision) ?? null,
@@ -240,7 +230,7 @@ export function RegistrarMovimientoModal({
       modo,
       num_contenedor: numContenedor.trim() || undefined,
       num_declaracion: numDeclaracion.trim() || undefined,
-      cantidad: Number(cantidad),
+      cantidad: Number(cantidadEfectiva),
       unidad_medida: esSalidaBultosSueltos ? "Bultos" : unidadMedida,
       pallets_ocupados: necesitaPalletsOcupados && palletsOcupados ? Number(palletsOcupados) : undefined,
       cantidad_bultos:
@@ -265,11 +255,15 @@ export function RegistrarMovimientoModal({
       setError("El retiro no puede tener una fecha anterior a la del ingreso elegido.");
       return;
     }
+    if (tipo === "Salida" && !retiraDeIngreso && stockPorDivisionCliente && !stockPorDivisionCliente.some((d) => d.id_division === idDivision)) {
+      setError("Elige una división donde este cliente tenga stock.");
+      return;
+    }
     if (retiraDeIngreso && idOrigen === "" && !esRetiroAntiguo) {
       setError("Elige el ingreso (N° de declaración) del que sale este retiro.");
       return;
     }
-    if (!idCliente || !idDivision || !cantidad || Number(cantidad) <= 0) {
+    if (!idCliente || !idDivision || !cantidadEfectiva || Number(cantidadEfectiva) <= 0) {
       setError("Cliente, división y cantidad (mayor a 0) son obligatorios.");
       return;
     }
@@ -468,7 +462,10 @@ export function RegistrarMovimientoModal({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => setTipoRetiro("pallet_completo")}
+                      onClick={() => {
+                        setTipoRetiro("pallet_completo");
+                        limpiarOrigen();
+                      }}
                       className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                         tipoRetiro === "pallet_completo" ? "border-2 border-slate-800 bg-slate-100 text-slate-800" : "border-slate-300 bg-white text-slate-500"
                       }`}
@@ -477,7 +474,10 @@ export function RegistrarMovimientoModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setTipoRetiro("bultos_sueltos")}
+                      onClick={() => {
+                        setTipoRetiro("bultos_sueltos");
+                        limpiarOrigen();
+                      }}
                       className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                         tipoRetiro === "bultos_sueltos" ? "border-2 border-slate-800 bg-slate-100 text-slate-800" : "border-slate-300 bg-white text-slate-500"
                       }`}
@@ -500,7 +500,7 @@ export function RegistrarMovimientoModal({
                   type="number"
                   min="0"
                   step="0.01"
-                  value={cantidad}
+                  value={cantidadEfectiva}
                   disabled={esIngresoConDetalle}
                   onChange={(e) => {
                     setCantidad(e.target.value);
@@ -514,7 +514,14 @@ export function RegistrarMovimientoModal({
               </Campo>
               {!esSalidaBultosSueltos && (
                 <Campo label="Unidad">
-                  <UnidadSelect value={unidadMedida} onChange={setUnidadMedida} className={inputClass} />
+                  <UnidadSelect
+                    value={unidadMedida}
+                    onChange={(u) => {
+                      setUnidadMedida(u);
+                      if (tipo === "Salida") limpiarOrigen();
+                    }}
+                    className={inputClass}
+                  />
                 </Campo>
               )}
             </div>
@@ -710,7 +717,7 @@ export function RegistrarMovimientoModal({
               </Campo>
               <Campo label="Fecha *">
                 <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
-                {fecha > new Date().toLocaleDateString("en-CA") && (
+                {fecha > fechaLocalHoy() && (
                   <span className="mt-1 text-xs font-medium text-amber-600">
                     Fecha futura: el movimiento ya se suma al stock y a los KPI hoy, aunque aún no ocurra.
                   </span>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { XCircle } from "lucide-react";
 import { useDivisiones, useHistorialCapacidad } from "./useAlmacen";
-import { formatearFecha } from "./AlmacenUI";
+import { formatearFecha } from "./almacen.utils";
 import { PlanoAlmacen } from "./PlanoAlmacen";
 import { getCurrentUser, puedeOperarAlmacen } from "../auth/auth.utils";
 import type { DivisionAlmacen } from "./almacen.api";

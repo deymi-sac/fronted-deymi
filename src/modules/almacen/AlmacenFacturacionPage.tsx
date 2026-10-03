@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileDown } from "lucide-react";
 import { useClientesAlmacen, useCierreMensual } from "./useAlmacen";
-import { formatearMoneda, formatearFecha, inputClassGenerico, descargarBlob } from "./AlmacenUI";
+import { formatearMoneda, formatearFecha, inputClassGenerico, descargarBlob } from "./almacen.utils";
 import { exportarCierreMensual } from "./almacen.api";
 
 const MESES = [

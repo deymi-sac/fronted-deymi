@@ -1,4 +1,5 @@
-import { Pill, formatearFecha, totalBultosMovimiento, capacidadBultosMovimiento } from "./AlmacenUI";
+import { Pill } from "./AlmacenUI";
+import { formatearFecha, totalBultosMovimiento, capacidadBultosMovimiento } from "./almacen.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
 
 export function VerMovimientoModal({ movimiento, onClose }: { movimiento: MovimientoAlmacen; onClose: () => void }) {
