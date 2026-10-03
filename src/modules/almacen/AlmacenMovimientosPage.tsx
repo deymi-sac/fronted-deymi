@@ -153,6 +153,35 @@ export default function AlmacenMovimientosPage() {
             <p className="text-sm text-slate-400">Registra el primer ingreso o salida con el botón de arriba.</p>
           </div>
         ) : (
+          <>
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <span className="text-xs text-slate-500">
+                {(paginaActual - 1) * POR_PAGINA + 1}–{Math.min(paginaActual * POR_PAGINA, movimientos.length)} de {movimientos.length}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setPagina(paginaActual - 1)}
+                  disabled={paginaActual === 1}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Anterior
+                </button>
+                <span className="px-2 text-xs text-slate-500">
+                  Página {paginaActual} de {totalPaginas}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPagina(paginaActual + 1)}
+                  disabled={paginaActual === totalPaginas}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] border-collapse">
               <thead>
@@ -234,35 +263,8 @@ export default function AlmacenMovimientosPage() {
                 ))}
               </tbody>
             </table>
-            {totalPaginas > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-                <span className="text-xs text-slate-500">
-                  {(paginaActual - 1) * POR_PAGINA + 1}–{Math.min(paginaActual * POR_PAGINA, movimientos.length)} de {movimientos.length}
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setPagina(paginaActual - 1)}
-                    disabled={paginaActual === 1}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                  >
-                    Anterior
-                  </button>
-                  <span className="px-2 text-xs text-slate-500">
-                    Página {paginaActual} de {totalPaginas}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPagina(paginaActual + 1)}
-                    disabled={paginaActual === totalPaginas}
-                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                  >
-                    Siguiente
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
+          </>
         )}
       </div>
 
