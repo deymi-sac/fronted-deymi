@@ -12,6 +12,9 @@ interface Usuario {
 const NOMBRES_ROLES: Record<number, string> = {
   1: "Administrador",
   2: "Coordinador de transporte",
+  3: "Sistemas",
+  4: "Coordinador de almacén",
+  5: "Facturación",
 };
 
 function obtenerUsuario(): Usuario | null {

@@ -183,7 +183,7 @@ export function Sidebar({ colapsado, onToggle, abiertoMobile, onCerrarMobile }: 
           type="button"
           onClick={cerrarSesion}
           title={!mostrarTexto ? "Cerrar sesión" : undefined}
-          className={`flex w-full items-center gap-3 rounded-lg py-3 text-sm font-medium text-gray-400 transition-colors hover:bg-red-500/10 hover:text-red-400 ${
+          className={`flex w-full items-center gap-3 rounded-lg bg-red-500/10 py-3 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/20 hover:text-red-300 ${
             mostrarTexto ? "px-4" : "lg:justify-center lg:px-0"
           }`}
         >
