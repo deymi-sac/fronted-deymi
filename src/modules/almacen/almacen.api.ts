@@ -206,6 +206,8 @@ export interface MovimientoAlmacen {
   unidad_bultos: string | null;
   detalle_bultos_pallets: number[];
   libera_pallet: boolean | null;
+  // Días libres de cobro (21 en un ingreso de contenedor); nulo si no tiene.
+  dias_libres: number | null;
   fecha: string;
   observaciones: string | null;
   estado: string;
@@ -226,7 +228,8 @@ export interface CrearMovimientoPayload {
   id_cliente_almacen: number;
   id_producto?: number;
   id_division: number;
-  modo: "Contenedor" | "Carga suelta";
+  // Obligatorio en un Ingreso; en un retiro lo toma el servidor del ingreso de origen.
+  modo?: "Contenedor" | "Carga suelta";
   num_contenedor?: string;
   num_declaracion?: string;
   cantidad: number;
@@ -355,6 +358,8 @@ export interface ControlDiario {
   ingresos: number;
   salidas: number;
   saldo_final: number;
+  // Pallets que ese día no se cobran por estar en días libres de contenedor.
+  pallets_libres: number;
   pallets_facturables: number;
   costo_dia: number | null;
 }
@@ -370,6 +375,7 @@ export interface CierreMensual {
   salidas: number;
   pallets_al_cierre: number;
   pallet_dias_facturados: number;
+  pallet_dias_libres: number;
   monto_a_facturar: number | null;
   control_diario: ControlDiario[];
 }

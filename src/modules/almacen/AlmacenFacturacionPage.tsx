@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { FileDown } from "lucide-react";
 import { useClientesAlmacen, useCierreMensual } from "./useAlmacen";
 import { formatearMoneda, formatearFecha, inputClassGenerico, descargarBlob } from "./almacen.utils";
@@ -39,7 +39,7 @@ export default function AlmacenFacturacionPage() {
           <h1 className="text-2xl font-semibold text-slate-800">Facturación</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
             Costo de almacenaje calculado por m² mensual (cada pallet = 1.2 m²), cobrando el día de ingreso y el día de
-            salida.
+            salida. Los ingresos en contenedor tienen 21 días libres: no se cobran hasta el día 22.
           </p>
         </div>
         <button

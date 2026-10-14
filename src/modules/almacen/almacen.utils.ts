@@ -70,6 +70,13 @@ export function fechaLocalHoy(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Suma días a una fecha "YYYY-MM-DD" (sin problemas de zona horaria).
+export function fechaMasDias(iso: string, dias: number): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const fecha = new Date(Date.UTC(y!, m! - 1, d! + dias));
+  return fecha.toISOString().slice(0, 10);
+}
+
 export function formatearFecha(iso: string | null) {
   if (!iso) return "—";
   const [y, m, d] = iso.slice(0, 10).split("-");

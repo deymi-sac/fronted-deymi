@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { isAxiosError } from "axios";
 import { Plus, ChevronDown, ChevronRight, X } from "lucide-react";
 import {
@@ -13,7 +13,7 @@ import {
 } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
 import { UnidadSelect } from "./AlmacenUI";
-import { formatearFecha, fechaLocalHoy } from "./almacen.utils";
+import { formatearFecha, fechaLocalHoy, fechaMasDias } from "./almacen.utils";
 import type { ExcesoCapacidadInfo, MovimientoAlmacen } from "./almacen.api";
 
 const NUEVO_PRODUCTO = "__nuevo__";
@@ -58,7 +58,8 @@ export function RegistrarMovimientoModal({
   const [motivo, setMotivo] = useState(movimientoEditar?.motivo ?? MOTIVOS_INGRESO[0]);
   const [idCliente, setIdCliente] = useState<number | "">(movimientoEditar?.id_cliente_almacen ?? "");
   const [idProducto, setIdProducto] = useState<number | "">(movimientoEditar?.id_producto ?? "");
-  const [modo, setModo] = useState<"Contenedor" | "Carga suelta">(movimientoEditar?.modo ?? "Contenedor");
+  // Sin valor por defecto: en un Ingreso hay que elegir si es Contenedor o Carga suelta (define los días libres de cobro).
+  const [modo, setModo] = useState<"" | "Contenedor" | "Carga suelta">(movimientoEditar?.modo ?? "");
   const [numContenedor, setNumContenedor] = useState(movimientoEditar?.num_contenedor ?? "");
   const [numDeclaracion, setNumDeclaracion] = useState(movimientoEditar?.num_declaracion ?? "");
   const [cantidad, setCantidad] = useState(movimientoEditar?.cantidad ?? "");
@@ -188,6 +189,7 @@ export function RegistrarMovimientoModal({
 
   function cambiarTipo(nuevo: "Ingreso" | "Salida") {
     setTipo(nuevo);
+    setError(null);
     setMotivo(nuevo === "Ingreso" ? MOTIVOS_INGRESO[0] : MOTIVOS_SALIDA[0]);
     setExceso(null);
     setIdDivision("");
@@ -220,6 +222,13 @@ export function RegistrarMovimientoModal({
   // forma de saber eso y antes se contaba por error la cantidad de cajas como si fueran pallets.
   const necesitaPalletsOcupados = tipo === "Ingreso" && unidadMedida !== "Pallet";
 
+  // Un ingreso de contenedor tiene 21 días libres de cobro y exige su N° de contenedor. Un ingreso
+  // anterior a esa regla (sin días libres) que se edita sin cambiar su tipo no lo exige ni cambia.
+  const ingresoAnteriorALaRegla = editando && movimientoEditar!.tipo === "Ingreso" && movimientoEditar!.modo === "Contenedor" && movimientoEditar!.dias_libres == null;
+  const requiereNumContenedor =
+    tipo === "Ingreso" && modo === "Contenedor" && !(ingresoAnteriorALaRegla && movimientoEditar!.modo === modo);
+  const cambiaTipoDeIngreso = editando && tipo === "Ingreso" && movimientoEditar!.tipo === "Ingreso" && modo !== movimientoEditar!.modo;
+
   function construirPayload(forzar: boolean) {
     return {
       tipo,
@@ -227,7 +236,8 @@ export function RegistrarMovimientoModal({
       id_cliente_almacen: Number(idCliente),
       id_producto: idProducto === "" ? undefined : Number(idProducto),
       id_division: Number(idDivision),
-      modo,
+      // En un retiro el modo lo toma el servidor del ingreso del que sale.
+      modo: tipo === "Ingreso" && modo !== "" ? modo : undefined,
       num_contenedor: numContenedor.trim() || undefined,
       num_declaracion: numDeclaracion.trim() || undefined,
       cantidad: Number(cantidadEfectiva),
@@ -251,6 +261,14 @@ export function RegistrarMovimientoModal({
   function handleSubmit(e: React.FormEvent, forzar = false) {
     e.preventDefault();
     setError(null);
+    if (tipo === "Ingreso" && modo === "") {
+      setError("Elige si el ingreso es de Contenedor o de Carga suelta.");
+      return;
+    }
+    if (requiereNumContenedor && !numContenedor.trim()) {
+      setError("Escribe el N° de contenedor: es obligatorio en un ingreso de contenedor.");
+      return;
+    }
     if (ingresoOrigenSeleccionado && fecha < ingresoOrigenSeleccionado.fecha.slice(0, 10)) {
       setError("El retiro no puede tener una fecha anterior a la del ingreso elegido.");
       return;
@@ -415,32 +433,51 @@ export function RegistrarMovimientoModal({
               </div>
             )}
 
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-slate-600">Modo</span>
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setModo("Contenedor")}
-                  className={`rounded-xl border py-2.5 text-sm font-medium transition ${
-                    modo === "Contenedor" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
-                  }`}
-                >
-                  Contenedor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModo("Carga suelta")}
-                  className={`rounded-xl border py-2.5 text-sm font-medium transition ${
-                    modo === "Carga suelta" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
-                  }`}
-                >
-                  Carga suelta
-                </button>
+            {tipo === "Ingreso" && (
+              <div>
+                <span className="mb-1.5 block text-sm font-medium text-slate-600">Tipo de ingreso *</span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => { setModo("Contenedor"); setError(null); }}
+                    className={`rounded-xl border py-2.5 text-sm font-medium transition ${
+                      modo === "Contenedor" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
+                    }`}
+                  >
+                    Contenedor
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setModo("Carga suelta"); setError(null); }}
+                    className={`rounded-xl border py-2.5 text-sm font-medium transition ${
+                      modo === "Carga suelta" ? "border-2 border-slate-800 text-slate-800" : "border-slate-200 text-slate-500"
+                    }`}
+                  >
+                    Carga suelta
+                  </button>
+                </div>
+                {modo === "" && <p className="mt-1.5 text-xs text-slate-400">Elige una opción: define si el ingreso tiene días libres de cobro.</p>}
+                {modo === "Contenedor" && !ingresoAnteriorALaRegla && (
+                  <p className="mt-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                    Ingreso de contenedor: <b>21 días libres</b>. No se factura el día de ingreso ni hasta el día 21; el cobro empieza el{" "}
+                    <b>{formatearFecha(fechaMasDias(fecha, 21))}</b>. Si sale antes, no se cobra nada.
+                  </p>
+                )}
+                {modo === "Contenedor" && ingresoAnteriorALaRegla && !cambiaTipoDeIngreso && (
+                  <p className="mt-1.5 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                    Este ingreso se registró antes de la regla de días libres: conserva su facturación original.
+                  </p>
+                )}
+                {cambiaTipoDeIngreso && (
+                  <p className="mt-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                    Al cambiar el tipo de ingreso se modifica el cobro de este ingreso en todos los meses, también los ya facturados.
+                  </p>
+                )}
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
-              <Campo label="N° de contenedor">
+              <Campo label={requiereNumContenedor ? "N° de contenedor *" : "N° de contenedor"}>
                 <input value={numContenedor} onChange={(e) => setNumContenedor(e.target.value)} className={inputClass} placeholder="HLBU2680426" />
               </Campo>
               <Campo label="N° Declaración / Traspaso">

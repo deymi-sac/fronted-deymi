@@ -1,5 +1,5 @@
 import { Pill } from "./AlmacenUI";
-import { formatearFecha, totalBultosMovimiento, capacidadBultosMovimiento } from "./almacen.utils";
+import { formatearFecha, fechaMasDias, totalBultosMovimiento, capacidadBultosMovimiento } from "./almacen.utils";
 import type { MovimientoAlmacen } from "./almacen.api";
 
 export function VerMovimientoModal({ movimiento, onClose }: { movimiento: MovimientoAlmacen; onClose: () => void }) {
@@ -46,6 +46,13 @@ export function VerMovimientoModal({ movimiento, onClose }: { movimiento: Movimi
           </Campo>
           {capacidadBultosMovimiento(movimiento) && (
             <Campo label="Capacidad por pallet">{capacidadBultosMovimiento(movimiento)}</Campo>
+          )}
+          {movimiento.tipo === "Ingreso" && movimiento.modo === "Contenedor" && (
+            <Campo label="Días libres de cobro">
+              {movimiento.dias_libres
+                ? `Hasta el ${formatearFecha(fechaMasDias(movimiento.fecha, movimiento.dias_libres - 1))} · cobro desde el ${formatearFecha(fechaMasDias(movimiento.fecha, movimiento.dias_libres))}`
+                : "Sin días libres (ingreso anterior a la regla)"}
+            </Campo>
           )}
           {movimiento.tipo === "Salida" && movimiento.id_movimiento_origen && (
             <Campo label="Sale del ingreso">N° {movimiento.ingreso_origen_declaracion ?? "s/n"}</Campo>
