@@ -134,6 +134,8 @@ export interface IngresoDisponible {
   division: string;
   pallets_restantes: number;
   bultos_restantes: number | null;
+  // Cuántos pallets quedan con cada cantidad de bultos (para retirar bultos por pallet).
+  pallets_por_bultos?: { bultos: number; pallets: number }[];
   // Solo cuando se consultan ingresos de cajas/rollos/etc.
   unidad_medida?: string;
   unidades_restantes?: number;

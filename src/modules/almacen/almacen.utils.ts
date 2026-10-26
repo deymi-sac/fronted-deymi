@@ -34,8 +34,15 @@ export function totalBultosMovimiento(m: MovimientoAlmacen): { total: number; un
 // Capacidad de bultos de un Ingreso, en palabras: "20 pallets de 20 bultos c/u" cuando todos
 // son iguales, o "10 pallets de 50 + 5 pallets de 30" cuando cambian. Las salidas no tienen.
 export function capacidadBultosMovimiento(m: MovimientoAlmacen): string | null {
-  if (m.tipo !== "Ingreso") return null;
   const plural = (n: number) => (n === 1 ? "pallet" : "pallets");
+  // Retiro de bultos con detalle por pallet: "3 pallets de 10 + 1 pallet de 50 bultos".
+  if (m.tipo === "Salida") {
+    if (m.detalle_bultos_pallets.length === 0) return null;
+    const grupos = new Map<number, number>();
+    for (const b of m.detalle_bultos_pallets) grupos.set(b, (grupos.get(b) ?? 0) + 1);
+    return `${[...grupos.entries()].map(([bultos, pallets]) => `${pallets} ${plural(pallets)} de ${bultos}`).join(" + ")} bultos`;
+  }
+  if (m.tipo !== "Ingreso") return null;
 
   if (m.detalle_bultos_pallets.length > 0) {
     const grupos = new Map<number, number>();
