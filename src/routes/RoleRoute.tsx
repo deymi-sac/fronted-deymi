@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { getCurrentUser } from "../modules/auth/auth.utils";
+import { getCurrentUser, rutaInicioDelRol } from "../modules/auth/auth.utils";
 
 interface RoleRouteProps {
   allowedRoles: number[];
@@ -12,8 +12,9 @@ export function RoleRoute({ allowedRoles }: RoleRouteProps) {
     return <Navigate to="/login" replace />;
   }
 
+  // Sin permiso: se lleva a cada rol a su propia pantalla de inicio.
   if (!allowedRoles.includes(usuario.id_rol)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={rutaInicioDelRol(usuario.id_rol)} replace />;
   }
 
   return <Outlet />;

@@ -9,7 +9,7 @@ import DashboardPage from "./modules/dashboard/DashboardPage";
 import ServicesPage from "./modules/services/ServicesPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleRoute } from "./routes/RoleRoute";
-import { ROLES } from "./modules/auth/auth.utils";
+import { ROLES, ROLES_ALMACEN, ROLES_TRANSPORTE } from "./modules/auth/auth.utils";
 import { UnidadesPage } from "./modules/unidades/UnidadesPage";
 import DocumentosPage from "./modules/documentos/DocumentosPage";
 
@@ -40,12 +40,15 @@ function App() {
         {/* Layout principal */}
         <Route element={<DashboardLayout />}>
 
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/conductores" element={<ConductoresPage />} />
-          <Route path="/unidades" element={<UnidadesPage />} />
-          <Route path="/asignacion-unidades" element={<ServicesPage />} />
-          <Route path="/transportistas" element={<TransportistasPage />} />
-          <Route path="/documentos" element={<DocumentosPage />} />
+          {/* Transporte: Administrador, Sistemas y Coordinador de transporte */}
+          <Route element={<RoleRoute allowedRoles={ROLES_TRANSPORTE} />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/conductores" element={<ConductoresPage />} />
+            <Route path="/unidades" element={<UnidadesPage />} />
+            <Route path="/asignacion-unidades" element={<ServicesPage />} />
+            <Route path="/transportistas" element={<TransportistasPage />} />
+            <Route path="/documentos" element={<DocumentosPage />} />
+          </Route>
           {/* Solo administrador y sistemas (ahora dentro del layout, hereda sidebar y topbar) */}
           <Route element={<RoleRoute allowedRoles={[ROLES.ADMIN, ROLES.SISTEMAS]} />}>
             <Route path="/usuarios" element={<UsuariosPage />} />
@@ -54,13 +57,7 @@ function App() {
 
           {/* Almacén: Administrador, Sistemas, Coordinador de Almacén y Facturación (el backend ya
               restringe qué puede escribir cada uno; aquí solo se controla quién ve el módulo) */}
-          <Route
-            element={
-              <RoleRoute
-                allowedRoles={[ROLES.ADMIN, ROLES.SISTEMAS, ROLES.COORDINADOR_DE_ALMACEN, ROLES.FACTURACION]}
-              />
-            }
-          >
+          <Route element={<RoleRoute allowedRoles={ROLES_ALMACEN} />}>
             <Route path="/almacen/dashboard" element={<AlmacenDashboardPage />} />
             <Route path="/almacen/movimientos" element={<AlmacenMovimientosPage />} />
             <Route path="/almacen/clientes" element={<AlmacenClientesPage />} />
