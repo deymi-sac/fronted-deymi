@@ -141,9 +141,10 @@ export interface IngresoDisponible {
   unidades_restantes?: number;
 }
 
-export async function ingresosDisponibles(id_cliente_almacen: number, unidad?: string): Promise<IngresoDisponible[]> {
+// "excluir" = retiro que se está editando: se ve lo disponible sin contar ese retiro.
+export async function ingresosDisponibles(id_cliente_almacen: number, unidad?: string, excluir?: number): Promise<IngresoDisponible[]> {
   const { data } = await api.get<IngresoDisponible[]>(`/almacen/clientes/${id_cliente_almacen}/ingresos-disponibles`, {
-    params: unidad ? { unidad } : undefined,
+    params: unidad || excluir ? { ...(unidad ? { unidad } : {}), ...(excluir ? { excluir } : {}) } : undefined,
   });
   return data;
 }
@@ -207,6 +208,8 @@ export interface MovimientoAlmacen {
   cantidad_bultos: number | null;
   unidad_bultos: string | null;
   detalle_bultos_pallets: number[];
+  // Solo en retiros con detalle: bultos que tenía cada pallet elegido (vacío en retiros anteriores).
+  detalle_pallets_origen: number[];
   libera_pallet: boolean | null;
   // Días libres de cobro (21 en un ingreso de contenedor); nulo si no tiene.
   dias_libres: number | null;
@@ -241,6 +244,7 @@ export interface CrearMovimientoPayload {
   cantidad_bultos?: number;
   unidad_bultos?: string;
   detalle_bultos_pallets?: number[];
+  detalle_pallets_origen?: number[];
   libera_pallet?: boolean;
   fecha: string;
   observaciones?: string;

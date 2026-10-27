@@ -13,7 +13,7 @@ import {
 } from "./useAlmacen";
 import { inputClass } from "./CrearClienteModal";
 import { UnidadSelect } from "./AlmacenUI";
-import { formatearFecha, fechaLocalHoy, fechaMasDias } from "./almacen.utils";
+import { formatearFecha, fechaLocalHoy, fechaMasDias, tamanosTrasGrupos, errorDeSecuencia } from "./almacen.utils";
 import type { ExcesoCapacidadInfo, MovimientoAlmacen } from "./almacen.api";
 
 const NUEVO_PRODUCTO = "__nuevo__";
@@ -24,17 +24,24 @@ const MOTIVOS_SALIDA = ["Nacionalizada", "Reexpedición marítima", "Reexpedici�
 interface GrupoBultos {
   cantidadPallets: string;
   bultosPorPallet: string;
+  // Solo en un retiro: bultos que tiene hoy el pallet del que sale (identifica el pallet).
+  dePallet: string;
 }
 
 // Agrupa un detalle plano [50,50,50,20] en grupos [{cantidadPallets:3, bultosPorPallet:50}, {cantidadPallets:1, bultosPorPallet:20}].
-function detalleAGrupos(detalle: number[]): GrupoBultos[] {
-  if (detalle.length === 0) return [{ cantidadPallets: "", bultosPorPallet: "" }];
+// En un retiro, "de" trae los bultos que tenía cada pallet elegido y también separa los grupos.
+function detalleAGrupos(detalle: number[], de: number[] = []): GrupoBultos[] {
+  if (detalle.length === 0) return [{ cantidadPallets: "", bultosPorPallet: "", dePallet: "" }];
   const grupos: GrupoBultos[] = [];
   let i = 0;
   while (i < detalle.length) {
     let j = i;
-    while (j < detalle.length && detalle[j] === detalle[i]) j++;
-    grupos.push({ cantidadPallets: String(j - i), bultosPorPallet: String(detalle[i]) });
+    while (j < detalle.length && detalle[j] === detalle[i] && de[j] === de[i]) j++;
+    grupos.push({
+      cantidadPallets: String(j - i),
+      bultosPorPallet: String(detalle[i]),
+      dePallet: de[i] !== undefined ? String(de[i]) : "",
+    });
     i = j;
   }
   return grupos;
@@ -76,7 +83,7 @@ export function RegistrarMovimientoModal({
   );
   const [palletsDistintos, setPalletsDistintos] = useState((movimientoEditar?.detalle_bultos_pallets.length ?? 0) > 0);
   const [gruposBultos, setGruposBultos] = useState<GrupoBultos[]>(
-    detalleAGrupos(movimientoEditar?.detalle_bultos_pallets ?? [])
+    detalleAGrupos(movimientoEditar?.detalle_bultos_pallets ?? [], movimientoEditar?.detalle_pallets_origen ?? [])
   );
   // En un retiro de bultos sueltos: detallar cuántos bultos salen de cada pallet (opcional).
   const [retiroPorPallet, setRetiroPorPallet] = useState(
@@ -114,7 +121,8 @@ export function RegistrarMovimientoModal({
   const retiraDeIngreso = retiraPallets || retiraOtraUnidad;
   const { data: ingresosCliente, isLoading: cargandoIngresos } = useIngresosDisponibles(
     retiraDeIngreso && idCliente !== "" ? idCliente : null,
-    retiraOtraUnidad ? unidadMedida : undefined
+    retiraOtraUnidad ? unidadMedida : undefined,
+    movimientoEditar?.id_movimiento
   );
   const ingresosOpcion = (ingresosCliente ?? []).filter((i) =>
     retiraOtraUnidad ? (i.unidades_restantes ?? 0) > 0 : retiraBultosSueltos ? (i.bultos_restantes ?? 0) > 0 : i.pallets_restantes > 0
@@ -129,6 +137,9 @@ export function RegistrarMovimientoModal({
     const ingreso = ingresosOpcion.find((i) => i.id_movimiento === id);
     setIdDivision(ingreso ? ingreso.id_division : "");
     setIdProducto(ingreso?.id_producto ?? "");
+    // Los pallets disponibles cambian de un ingreso a otro: se empieza el detalle de cero.
+    const tamanos = ingreso?.pallets_por_bultos ?? [];
+    setGruposBultos([{ cantidadPallets: "", bultosPorPallet: "", dePallet: tamanos.length === 1 ? String(tamanos[0]!.bultos) : "" }]);
   }
 
   const { data: stockPorDivisionCliente, isLoading: cargandoStockDivision } = useStockPorClientePorDivision(
@@ -142,7 +153,18 @@ export function RegistrarMovimientoModal({
   // grupos (ej. "29 pallets de 50" + "1 pallet de 20").
   // Un retiro de bultos sueltos puede detallar cuántos bultos salen de cada pallet, para saber qué
   // pallets quedan vacíos (y dejan de cobrarse).
-  const retiroConDetalle = tipo === "Salida" && unidadMedida === "Pallet" && tipoRetiro === "bultos_sueltos" && retiroPorPallet;
+  // Es obligatorio cuando el ingreso tiene desglose por pallet (sin él no se sabría qué pallets se
+  // vacían y la facturación sería imprecisa). Un retiro ya registrado sin detalle se edita como estaba.
+  const salidaBultosSueltos = tipo === "Salida" && unidadMedida === "Pallet" && tipoRetiro === "bultos_sueltos";
+  const ingresoConDesglose = (ingresoOrigenSeleccionado?.pallets_por_bultos?.length ?? 0) > 0;
+  const detalleObligatorio =
+    salidaBultosSueltos && ingresoConDesglose && (!movimientoEditar || movimientoEditar.detalle_bultos_pallets.length > 0);
+  const retiroConDetalle = salidaBultosSueltos && (retiroPorPallet || detalleObligatorio);
+  // De qué pallet sale cada cantidad: se elige entre los que quedan en el ingreso, por los bultos que
+  // tienen hoy (un retiro anterior que no lo guardó se edita como estaba).
+  const tamanosDePallet = ingresoOrigenSeleccionado?.pallets_por_bultos ?? [];
+  const eligeDePallet =
+    retiroConDetalle && tamanosDePallet.length > 0 && (!movimientoEditar || movimientoEditar.detalle_pallets_origen.length > 0);
 
   const distintoCalculo = useMemo(() => {
     if (!((tipo === "Ingreso" && palletsDistintos) || retiroConDetalle)) return null;
@@ -153,22 +175,71 @@ export function RegistrarMovimientoModal({
         /^\d+$/.test(g.cantidadPallets.trim()) &&
         Number(g.cantidadPallets) > 0 &&
         (retiroConDetalle ? /^\d+$/ : /^\d+(\.\d+)?$/).test(g.bultosPorPallet.trim()) &&
-        Number(g.bultosPorPallet) > 0
+        Number(g.bultosPorPallet) > 0 &&
+        (!eligeDePallet || (/^\d+$/.test(g.dePallet) && Number(g.bultosPorPallet) <= Number(g.dePallet)))
     );
-    if (!todasValidas) return { detalle: [], pallets: 0, invalido: true as const };
+    if (!todasValidas) return { detalle: [], de: [], pallets: 0, invalido: true as const };
     const detalle = filas.flatMap((g) => Array(Number(g.cantidadPallets)).fill(Number(g.bultosPorPallet)));
-    return { pallets: detalle.length, detalle, total: detalle.reduce((a, b) => a + b, 0), invalido: false as const };
-  }, [tipo, palletsDistintos, retiroConDetalle, gruposBultos]);
+    const de = eligeDePallet ? filas.flatMap((g) => Array(Number(g.cantidadPallets)).fill(Number(g.dePallet))) : [];
+    return { pallets: detalle.length, detalle, de, total: detalle.reduce((a, b) => a + b, 0), invalido: false as const };
+  }, [tipo, palletsDistintos, retiroConDetalle, eligeDePallet, gruposBultos]);
+
+  // Pallets completos: si el ingreso tiene pallets de distintos tamaños (por sus bultos), hay que decir
+  // cuáles salen; si todos son iguales no hay nada que elegir. Un retiro anterior que no lo guardó se
+  // edita como estaba.
+  const eligePalletsCompletos =
+    tipo === "Salida" &&
+    unidadMedida === "Pallet" &&
+    tipoRetiro === "pallet_completo" &&
+    tamanosDePallet.length >= 2 &&
+    (!movimientoEditar || movimientoEditar.detalle_pallets_origen.length > 0);
+
+  const eleccionCompletos = (() => {
+    if (!eligePalletsCompletos) return null;
+    const filas = gruposBultos.filter((g) => g.cantidadPallets.trim() !== "" || g.dePallet !== "");
+    if (filas.length === 0) return null;
+    const validas = filas.every((g) => /^\d+$/.test(g.cantidadPallets.trim()) && Number(g.cantidadPallets) > 0 && /^\d+$/.test(g.dePallet));
+    if (!validas) return { de: [], pallets: 0, error: "Completa en cada grupo cuántos pallets salen y de qué pallet." };
+    const pedidos = new Map<number, number>();
+    for (const g of filas) pedidos.set(Number(g.dePallet), (pedidos.get(Number(g.dePallet)) ?? 0) + Number(g.cantidadPallets));
+    for (const [bultos, n] of pedidos) {
+      const quedan = tamanosDePallet.find((t) => t.bultos === bultos)?.pallets ?? 0;
+      if (n > quedan) return { de: [], pallets: 0, error: `Solo quedan ${quedan} pallet(s) de ${bultos} bultos.` };
+    }
+    const de = filas.flatMap((g) => Array(Number(g.cantidadPallets)).fill(Number(g.dePallet)));
+    return { de, pallets: de.length, error: null };
+  })();
+  const palletsCompletosListos = eleccionCompletos !== null && eleccionCompletos.error === null && eleccionCompletos.pallets > 0;
 
   // La "Cantidad" queda determinada por el cálculo de arriba: pallets en un ingreso, bultos retirados en un retiro.
   const cantidadEfectiva =
-    distintoCalculo && !distintoCalculo.invalido ? String(tipo === "Ingreso" ? distintoCalculo.pallets : distintoCalculo.total) : cantidad;
+    distintoCalculo && !distintoCalculo.invalido
+      ? String(tipo === "Ingreso" ? distintoCalculo.pallets : distintoCalculo.total)
+      : palletsCompletosListos
+        ? String(eleccionCompletos!.pallets)
+        : cantidad;
+
+  // Pallets que se pueden elegir en un grupo: los que quedan después de aplicar los grupos anteriores
+  // (un grupo puede partir un pallet de 40 en uno de 20 y el siguiente ya puede elegirlo).
+  function opcionesDeFila(i: number, g: GrupoBultos, completos: boolean) {
+    const lista = tamanosTrasGrupos(tamanosDePallet, gruposBultos.slice(0, i), completos);
+    return g.dePallet === "" || lista.some((t) => String(t.bultos) === g.dePallet) ? lista : [...lista, { bultos: Number(g.dePallet), pallets: 0 }];
+  }
+  // Primer grupo que no se puede cumplir con los pallets que quedan tras los anteriores.
+  const errorSecuencia = eligeDePallet
+    ? errorDeSecuencia(tamanosDePallet, gruposBultos, false)
+    : eligePalletsCompletos
+      ? errorDeSecuencia(tamanosDePallet, gruposBultos, true)
+      : null;
 
   function actualizarGrupoBultos(i: number, campo: keyof GrupoBultos, valor: string) {
     setGruposBultos((prev) => prev.map((g, idx) => (idx === i ? { ...g, [campo]: valor } : g)));
   }
   function agregarGrupoBultos() {
-    setGruposBultos((prev) => [...prev, { cantidadPallets: "", bultosPorPallet: "" }]);
+    setGruposBultos((prev) => [
+      ...prev,
+      { cantidadPallets: "", bultosPorPallet: "", dePallet: tamanosDePallet.length === 1 ? String(tamanosDePallet[0]!.bultos) : "" },
+    ]);
   }
   function quitarGrupoBultos(i: number) {
     setGruposBultos((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
@@ -210,6 +281,8 @@ export function RegistrarMovimientoModal({
     setIdOrigen("");
     setIdDivision("");
     setExceso(null);
+    // Los pallets que se pueden elegir dependen del ingreso: el detalle empieza de cero.
+    setGruposBultos([{ cantidadPallets: "", bultosPorPallet: "", dePallet: "" }]);
   }
 
   const divisionSeleccionada = useMemo(
@@ -262,6 +335,11 @@ export function RegistrarMovimientoModal({
       id_movimiento_origen: retiraDeIngreso && idOrigen !== "" ? Number(idOrigen) : undefined,
       // Al editar un retiro que tenía detalle y se desactiva, se manda vacío para borrarlo.
       detalle_bultos_pallets: detalleCompleto ? distintoCalculo!.detalle : esSalidaBultosSueltos && editando ? [] : undefined,
+      ...(esSalidaBultosSueltos
+        ? { detalle_pallets_origen: detalleCompleto && retiroConDetalle ? distintoCalculo!.de : editando ? [] : undefined }
+        : tipo === "Salida" && unidadMedida === "Pallet"
+          ? { detalle_pallets_origen: palletsCompletosListos ? eleccionCompletos!.de : editando ? [] : undefined }
+          : {}),
       libera_pallet: tipo === "Salida" ? unidadMedida === "Pallet" && tipoRetiro === "pallet_completo" : undefined,
       fecha,
       observaciones: observaciones.trim() || undefined,
@@ -292,14 +370,28 @@ export function RegistrarMovimientoModal({
       setError("Elige el ingreso (N° de declaración) del que sale este retiro.");
       return;
     }
+    if (eligePalletsCompletos && !palletsCompletosListos) {
+      setError(eleccionCompletos?.error ?? "Indica cuántos pallets salen de cada tipo (por los bultos que tiene cada uno).");
+      return;
+    }
     if (!idCliente || !idDivision || !cantidadEfectiva || Number(cantidadEfectiva) <= 0) {
-      setError("Cliente, división y cantidad (mayor a 0) son obligatorios.");
+      setError(
+        detalleObligatorio && idCliente && idDivision
+          ? "Indica cuántos pallets y cuántos bultos salen de cada uno."
+          : "Cliente, división y cantidad (mayor a 0) son obligatorios."
+      );
+      return;
+    }
+    if (errorSecuencia) {
+      setError(errorSecuencia);
       return;
     }
     if (usaDetalle && !detalleCompleto) {
       setError(
         retiroConDetalle
-          ? "Completa los grupos (cuántos pallets y cuántos bultos salen de cada uno), o desactiva el detalle de bultos por pallet."
+          ? detalleObligatorio
+            ? "Completa los grupos: cuántos pallets y cuántos bultos salen de cada uno."
+            : "Completa los grupos (cuántos pallets y cuántos bultos salen de cada uno), o desactiva el detalle de bultos por pallet."
           : "Completa los grupos de pallets (cantidad y bultos de cada uno), o desactiva \"pallets con cantidades distintas\"."
       );
       return;
@@ -549,6 +641,7 @@ export function RegistrarMovimientoModal({
             )}
 
             <div className={`grid gap-4 ${esSalidaBultosSueltos ? "grid-cols-1" : "grid-cols-2"}`}>
+              {!(esSalidaBultosSueltos && detalleObligatorio) && !eligePalletsCompletos && (
               <Campo label={esSalidaBultosSueltos ? "Cantidad de bultos retirados *" : "Cantidad *"}>
                 <input
                   type="number"
@@ -568,6 +661,7 @@ export function RegistrarMovimientoModal({
                   </span>
                 )}
               </Campo>
+              )}
               {!esSalidaBultosSueltos && (
                 <Campo label="Unidad">
                   <UnidadSelect
@@ -582,19 +676,89 @@ export function RegistrarMovimientoModal({
               )}
             </div>
 
+            {eligePalletsCompletos && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                <span className="text-sm font-medium text-slate-600">Pallets que salen *</span>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Este ingreso tiene pallets con distinta cantidad de bultos. Indica cuántos salen de cada tipo, así el sistema descuenta el
+                  pallet correcto.
+                </p>
+                <p className="mt-2 rounded-lg bg-white px-3 py-2 text-xs text-slate-600">
+                  Quedan en este ingreso:{" "}
+                  <b>{tamanosDePallet.map((g) => `${g.pallets} ${g.pallets === 1 ? "pallet" : "pallets"} de ${g.bultos} bultos`).join(" · ")}</b>
+                </p>
+                <div className="mt-3 flex flex-col gap-2">
+                  {gruposBultos.map((g, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Pallets"
+                        value={g.cantidadPallets}
+                        onChange={(e) => actualizarGrupoBultos(i, "cantidadPallets", e.target.value)}
+                        className={`${inputClass} flex-1`}
+                      />
+                      <span className="flex-shrink-0 text-xs text-slate-500">pallet(s) de</span>
+                      <select
+                        value={g.dePallet}
+                        onChange={(e) => actualizarGrupoBultos(i, "dePallet", e.target.value)}
+                        className={`${inputClass} flex-1`}
+                      >
+                        <option value="">Elige pallet</option>
+                        {opcionesDeFila(i, g, true).map((t) => (
+                          <option key={t.bultos} value={t.bultos}>
+                            {t.bultos} bultos (quedan {t.pallets})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => quitarGrupoBultos(i)}
+                        disabled={gruposBultos.length <= 1}
+                        className="flex-shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 disabled:opacity-30"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={agregarGrupoBultos}
+                    className="flex w-fit items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                  >
+                    <Plus size={13} /> Agregar grupo
+                  </button>
+                </div>
+                {eleccionCompletos?.error && <p className="mt-2 text-xs text-red-600">{eleccionCompletos.error}</p>}
+                {palletsCompletosListos && (
+                  <p className="mt-2 text-xs font-medium text-slate-600">
+                    = {eleccionCompletos!.pallets} {eleccionCompletos!.pallets === 1 ? "pallet" : "pallets"} completos.
+                  </p>
+                )}
+              </div>
+            )}
+
             {esSalidaBultosSueltos && (
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                 <label className="flex items-center justify-between gap-3">
-                  <span className="text-sm text-slate-600">Indicar bultos por pallet (opcional)</span>
-                  <input type="checkbox" checked={retiroPorPallet} onChange={(e) => setRetiroPorPallet(e.target.checked)} className="h-4 w-4" />
+                  <span className="text-sm text-slate-600">
+                    Indicar bultos por pallet {detalleObligatorio ? "(obligatorio)" : "(opcional)"}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={retiroConDetalle}
+                    disabled={detalleObligatorio}
+                    onChange={(e) => setRetiroPorPallet(e.target.checked)}
+                    className="h-4 w-4"
+                  />
                 </label>
                 <p className="mt-1.5 text-xs text-slate-500">
-                  {retiroPorPallet
+                  {retiroConDetalle
                     ? "Indica cuántos pallets y cuántos bultos salen de cada uno: así el sistema libera justo los pallets que quedan vacíos y deja de cobrarlos."
                     : "Sin detalle, los bultos se descuentan en orden y el sistema no sabe de qué pallets salieron."}
                 </p>
 
-                {retiroPorPallet && (
+                {retiroConDetalle && (
                   <div className="mt-3 flex flex-col gap-3">
                     {ingresoOrigenSeleccionado?.pallets_por_bultos && ingresoOrigenSeleccionado.pallets_por_bultos.length > 0 && (
                       <p className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600">
@@ -617,7 +781,26 @@ export function RegistrarMovimientoModal({
                             onChange={(e) => actualizarGrupoBultos(i, "cantidadPallets", e.target.value)}
                             className={`${inputClass} flex-1`}
                           />
-                          <span className="flex-shrink-0 text-xs text-slate-500">pallet(s), salen</span>
+                          {eligeDePallet ? (
+                            <>
+                              <span className="flex-shrink-0 text-xs text-slate-500">pallet(s) de</span>
+                              <select
+                                value={g.dePallet}
+                                onChange={(e) => actualizarGrupoBultos(i, "dePallet", e.target.value)}
+                                className={`${inputClass} flex-1`}
+                              >
+                                <option value="">Elige pallet</option>
+                                {opcionesDeFila(i, g, false).map((t) => (
+                                  <option key={t.bultos} value={t.bultos}>
+                                    {t.bultos} bultos (quedan {t.pallets})
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="flex-shrink-0 text-xs text-slate-500">salen</span>
+                            </>
+                          ) : (
+                            <span className="flex-shrink-0 text-xs text-slate-500">pallet(s), salen</span>
+                          )}
                           <input
                             type="number"
                             min="0"
@@ -645,8 +828,13 @@ export function RegistrarMovimientoModal({
                       </button>
                     </div>
                     {distintoCalculo?.invalido && (
-                      <p className="text-xs text-red-600">Completa pallets y bultos en cada grupo con números enteros válidos.</p>
+                      <p className="text-xs text-red-600">
+                        {eligeDePallet
+                          ? "Completa en cada grupo cuántos pallets, de qué pallet salen y cuántos bultos (sin pasar de los que tiene ese pallet)."
+                          : "Completa pallets y bultos en cada grupo con números enteros válidos."}
+                      </p>
                     )}
+                    {errorSecuencia && <p className="text-xs text-red-600">{errorSecuencia}</p>}
                     {distintoCalculo && !distintoCalculo.invalido && (
                       <p className="text-xs font-medium text-slate-600">
                         = {distintoCalculo.pallets} {distintoCalculo.pallets === 1 ? "pallet" : "pallets"}, {distintoCalculo.total} bultos retirados en total.
