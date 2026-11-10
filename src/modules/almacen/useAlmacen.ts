@@ -177,3 +177,12 @@ export function useCierreMensual(idCliente: number | null, anio: number, mes: nu
     enabled: idCliente !== null,
   });
 }
+
+// Cobro de un rango de fechas (idCliente en null = no consultar).
+export function useCierreRango(idCliente: number | null, desde: string, hasta: string) {
+  return useQuery({
+    queryKey: ["almacen", "facturacion", "rango", idCliente, desde, hasta],
+    queryFn: () => api.obtenerCierreRango(idCliente!, desde, hasta),
+    enabled: idCliente !== null,
+  });
+}

@@ -1,13 +1,23 @@
 ﻿import { useState } from "react";
 import { FileDown } from "lucide-react";
-import { useClientesAlmacen, useCierreMensual } from "./useAlmacen";
-import { formatearMoneda, formatearFecha, inputClassGenerico, descargarBlob } from "./almacen.utils";
-import { exportarCierreMensual } from "./almacen.api";
+import { useClientesAlmacen, useCierreMensual, useCierreRango } from "./useAlmacen";
+import { formatearMoneda, formatearFecha, inputClassGenerico, descargarBlob, fechaLocalHoy } from "./almacen.utils";
+import { exportarCierreMensual, exportarCierreRango } from "./almacen.api";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
+
+// Igual que el servidor: un rango no puede pasar de 366 días.
+const MAX_DIAS_RANGO = 366;
+
+function errorDelRango(desde: string, hasta: string): string | null {
+  if (!desde || !hasta) return "Elige las dos fechas.";
+  if (desde > hasta) return "La fecha Desde no puede ser posterior a la fecha Hasta.";
+  const dias = (Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86400000 + 1;
+  return dias > MAX_DIAS_RANGO ? `El rango no puede pasar de ${MAX_DIAS_RANGO} días.` : null;
+}
 
 export default function AlmacenFacturacionPage() {
   const hoy = new Date();
@@ -16,15 +26,29 @@ export default function AlmacenFacturacionPage() {
   const [anio, setAnio] = useState(hoy.getFullYear());
   const [mes, setMes] = useState(hoy.getMonth() + 1);
   const [exportando, setExportando] = useState(false);
+  // "mes": el cierre del mes completo, como siempre. "rango": del día Desde al día Hasta (ambos se cobran).
+  const [modo, setModo] = useState<"mes" | "rango">("mes");
+  const [desde, setDesde] = useState(() => `${fechaLocalHoy().slice(0, 8)}01`);
+  const [hasta, setHasta] = useState(() => fechaLocalHoy());
+  const errorRango = modo === "rango" ? errorDelRango(desde, hasta) : null;
 
-  const { data: cierre, isLoading } = useCierreMensual(idCliente === "" ? null : idCliente, anio, mes);
+  const idConsulta = idCliente === "" ? null : idCliente;
+  const { data: cierreMes, isLoading: cargandoMes } = useCierreMensual(modo === "mes" ? idConsulta : null, anio, mes);
+  const { data: cierreRango, isLoading: cargandoRango } = useCierreRango(modo === "rango" && !errorRango ? idConsulta : null, desde, hasta);
+  const cierre = modo === "mes" ? cierreMes : cierreRango;
+  const isLoading = modo === "mes" ? cargandoMes : cargandoRango;
 
   async function handleExportar() {
     if (idCliente === "") return;
     setExportando(true);
     try {
-      const blob = await exportarCierreMensual(idCliente, anio, mes);
-      descargarBlob(blob, `cierre-mensual-${anio}-${String(mes).padStart(2, "0")}.xlsx`);
+      if (modo === "mes") {
+        const blob = await exportarCierreMensual(idCliente, anio, mes);
+        descargarBlob(blob, `cierre-mensual-${anio}-${String(mes).padStart(2, "0")}.xlsx`);
+      } else {
+        const blob = await exportarCierreRango(idCliente, desde, hasta);
+        descargarBlob(blob, `cierre-${desde}-a-${hasta}.xlsx`);
+      }
     } catch {
       alert("No se pudo generar el archivo Excel.");
     } finally {
@@ -48,7 +72,7 @@ export default function AlmacenFacturacionPage() {
           onClick={handleExportar}
           className="flex items-center gap-2 self-start rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
         >
-          <FileDown size={16} /> {exportando ? "Generando..." : "Exportar cierre mensual"}
+          <FileDown size={16} /> {exportando ? "Generando..." : modo === "mes" ? "Exportar cierre mensual" : "Exportar cierre del período"}
         </button>
       </div>
 
@@ -61,24 +85,65 @@ export default function AlmacenFacturacionPage() {
             </option>
           ))}
         </select>
-        <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className={inputClassGenerico}>
-          {MESES.map((m, i) => (
-            <option key={m} value={i + 1}>
-              {m}
-            </option>
+        <div className="flex gap-2">
+          {(["mes", "rango"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setModo(m)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                modo === m ? "border-2 border-slate-800 bg-slate-100 text-slate-800" : "border-slate-300 bg-white text-slate-500"
+              }`}
+            >
+              {m === "mes" ? "Por mes" : "Por rango de fechas"}
+            </button>
           ))}
-        </select>
-        <input
-          type="number"
-          value={anio}
-          onChange={(e) => setAnio(Number(e.target.value))}
-          className={`w-24 ${inputClassGenerico}`}
-        />
+        </div>
+        {modo === "mes" ? (
+          <>
+            <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className={inputClassGenerico}>
+              {MESES.map((m, i) => (
+                <option key={m} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={anio}
+              onChange={(e) => setAnio(Number(e.target.value))}
+              className={`w-24 ${inputClassGenerico}`}
+            />
+          </>
+        ) : (
+          <>
+            <label className="flex items-center gap-2 text-sm text-slate-500">
+              Desde
+              <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className={inputClassGenerico} />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-500">
+              Hasta
+              <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className={inputClassGenerico} />
+            </label>
+            <button
+              type="button"
+              onClick={() => setHasta(fechaLocalHoy())}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Hasta hoy
+            </button>
+          </>
+        )}
       </div>
+      {errorRango && <p className="-mt-3 mb-5 text-sm text-red-600">{errorRango}</p>}
 
       {idCliente === "" ? (
         <div className="flex min-h-60 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white">
-          <p className="text-sm text-slate-400">Selecciona un cliente para ver su cierre mensual.</p>
+          <p className="text-sm text-slate-400">Selecciona un cliente para ver su cobro.</p>
+        </div>
+      ) : errorRango ? (
+        <div className="flex min-h-60 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white">
+          <p className="text-sm text-slate-400">Corrige las fechas para ver el cobro.</p>
         </div>
       ) : isLoading || !cierre ? (
         <div className="flex min-h-60 items-center justify-center rounded-xl border border-slate-200 bg-white">
@@ -88,7 +153,7 @@ export default function AlmacenFacturacionPage() {
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ResumenTile label="Tarifa diaria/pallet" value={cierre.tarifa_diaria_pallet !== null ? `US$ ${cierre.tarifa_diaria_pallet.toFixed(2)}` : "Pendiente"} />
-            <ResumenTile label="Pallets al cierre" value={String(cierre.pallets_al_cierre)} />
+            <ResumenTile label={modo === "mes" ? "Pallets al cierre" : "Pallets al final del período"} value={String(cierre.pallets_al_cierre)} />
             <ResumenTile label="Pallet-día facturados" value={cierre.pallet_dias_facturados.toLocaleString("es-PE")} />
             <ResumenTile label="Monto a facturar" value={formatearMoneda(cierre.monto_a_facturar)} destacado />
           </div>
@@ -104,7 +169,10 @@ export default function AlmacenFacturacionPage() {
             <div className="border-b border-slate-200 px-5 py-4">
               <h2 className="text-sm font-semibold text-slate-700">Control diario</h2>
               <p className="text-xs text-slate-400">
-                {MESES[mes - 1]} {anio} — {cierre.cliente.razon_social}
+                {modo === "mes"
+                  ? `${MESES[mes - 1]} ${anio}`
+                  : `Del ${formatearFecha(cierre.desde)} al ${formatearFecha(cierre.hasta)} (${cierre.control_diario.length} días, ambos incluidos)`}{" "}
+                — {cierre.cliente.razon_social}
               </p>
             </div>
             <div className="max-h-[420px] overflow-y-auto">

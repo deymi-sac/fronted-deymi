@@ -370,10 +370,12 @@ export interface ControlDiario {
   costo_dia: number | null;
 }
 
-export interface CierreMensual {
+// Cobro de un período: un mes completo (cierre mensual) o un rango de fechas cualquiera.
+export interface CierreRango {
   cliente: { id_cliente_almacen: number; razon_social: string };
-  anio: number;
-  mes: number;
+  // Primer y último día del período, "AAAA-MM-DD" (ambos se cobran).
+  desde: string;
+  hasta: string;
   tarifa_mensual_m2: number | null;
   tarifa_diaria_pallet: number | null;
   pallets_al_inicio: number;
@@ -384,6 +386,24 @@ export interface CierreMensual {
   pallet_dias_libres: number;
   monto_a_facturar: number | null;
   control_diario: ControlDiario[];
+}
+
+export interface CierreMensual extends CierreRango {
+  anio: number;
+  mes: number;
+}
+
+export async function obtenerCierreRango(idCliente: number, desde: string, hasta: string): Promise<CierreRango> {
+  const { data } = await api.get<CierreRango>(`/almacen/clientes/${idCliente}/cierre-rango`, { params: { desde, hasta } });
+  return data;
+}
+
+export async function exportarCierreRango(idCliente: number, desde: string, hasta: string): Promise<Blob> {
+  const { data } = await api.get(`/almacen/clientes/${idCliente}/cierre-rango/exportar`, {
+    params: { desde, hasta },
+    responseType: "blob",
+  });
+  return data;
 }
 
 export async function obtenerCierreMensual(idCliente: number, anio: number, mes: number): Promise<CierreMensual> {
