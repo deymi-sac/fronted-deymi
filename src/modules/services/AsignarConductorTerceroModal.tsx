@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { listarConductoresDeTransportista } from "../transportistas/transportistas.api";
-import { mensajeDeError } from "../../lib/useEnviar";
+import { isAxiosError } from "axios";
 import { asignarConductorTercero, type Servicio } from "./services.api";
+
+function mensajeDeError(e: unknown) {
+  return (isAxiosError(e) && e.response?.data?.error) || "No se pudo guardar el conductor.";
+}
 
 const campo =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100";
