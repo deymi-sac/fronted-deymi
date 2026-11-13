@@ -154,6 +154,8 @@ export default function ServicesPage() {
 
   const [servicios, setServicios] = useState<Servicio[]>([]);
   const [busqueda, setBusqueda] = useState("");
+  // 0 = todos los estados
+  const [filtroEstado, setFiltroEstado] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [cambiandoEstado, setCambiandoEstado] =
@@ -286,6 +288,7 @@ export default function ServicesPage() {
 
       const response = await obtenerServicios({
         busqueda,
+        ...(filtroEstado ? { id_estado: filtroEstado } : {}),
         page: pagina,
         limit: LIMITE_POR_PAGINA,
       });
@@ -307,7 +310,7 @@ export default function ServicesPage() {
   }, 300);
 
   return () => clearTimeout(timeout);
-}, [busqueda, recarga, pagina]);
+}, [busqueda, filtroEstado, recarga, pagina]);
   // -------------------------------------------------------
   // Crear servicio
   // -------------------------------------------------------
@@ -564,8 +567,23 @@ async function manejarCambioConductor() {
             </p>
           </div>
 
-          <div className="w-full lg:w-80">
-            <div className="relative">
+          <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+            <select
+              value={filtroEstado}
+              onChange={(e) => {
+                setFiltroEstado(Number(e.target.value));
+                setPagina(1);
+              }}
+              aria-label="Filtrar por estado del servicio"
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white focus:ring-2 focus:ring-slate-100"
+            >
+              <option value={0}>Todos los estados</option>
+              <option value={ESTADO_PENDIENTE}>Pendiente</option>
+              <option value={ESTADO_EN_PROCESO}>En proceso</option>
+              <option value={ESTADO_COMPLETADO}>Completado</option>
+              <option value={ESTADO_CANCELADO}>Cancelado</option>
+            </select>
+            <div className="relative w-full lg:w-80">
               <input
                   type="text"
                   value={busqueda}

@@ -580,6 +580,19 @@ function TransportistaRow({
    DETALLE EXPANDIDO
 ============================================================ */
 
+/**
+ * Solo cuando el tipo viene como "No especificado" (o vacío): una placa = FURGÓN,
+ * dos placas registradas = SEMI TRAILER. Si ya tiene un tipo, se respeta.
+ */
+function tipoVehiculo(unidad: {
+  unit_type_vehiculo: string;
+  unit_placa_secundaria?: string | null;
+}) {
+  const tipo = (unidad.unit_type_vehiculo ?? "").trim();
+  if (tipo && tipo.toLowerCase() !== "no especificado") return tipo;
+  return unidad.unit_placa_secundaria?.trim() ? "SEMI TRAILER" : "FURGÓN";
+}
+
 function DetalleExpandido({
   transportista,
 }: {
@@ -704,9 +717,7 @@ function DetalleExpandido({
                         >
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-sm font-medium text-slate-700">
-                              {
-                                unidad.unit_type_vehiculo
-                              }
+                              {tipoVehiculo(unidad)}
                             </span>
 
                             <span className="rounded-md bg-white px-2 py-1 text-xs font-semibold text-slate-600 shadow-sm">
