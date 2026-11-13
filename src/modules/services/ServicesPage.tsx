@@ -11,6 +11,7 @@ import {
 
 import { NuevoServicioModal } from "./NuevoServicioModal";
 import { ExportarExcelModal } from "./ExportarExcelModal";
+import { DatosEnvioModal } from "./DatosEnvioModal";
 
 import {
   listarConductores,
@@ -27,6 +28,7 @@ import {
   ClipboardList,
   UserRound,
   Truck,
+  Send,
 } from "lucide-react";
 import { formatearFecha } from "../../utils/fecha.utils";
 const ESTADO_PENDIENTE = 1;
@@ -175,6 +177,9 @@ export default function ServicesPage() {
     useState(false);
   const [exportarExcelAbierto, setExportarExcelAbierto] =
     useState(false);
+
+  const [servicioEnvio, setServicioEnvio] =
+    useState<Servicio | null>(null);
 
   const [servicioSeleccionado, setServicioSeleccionado] =
   useState<Servicio | null>(null);
@@ -852,6 +857,16 @@ async function manejarCambioConductor() {
       <Eye size={18} />
     </button>
 
+    {/* Datos para enviar (para captura) */}
+    <button
+      type="button"
+      title="Datos para enviar"
+      onClick={() => setServicioEnvio(servicio)}
+      className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+    >
+      <Send size={18} />
+    </button>
+
     {/* Editar conductor */}
     {!servicio.unidades_terceros && (
       <button
@@ -921,6 +936,19 @@ async function manejarCambioConductor() {
             </div>
           )}
       </div>
+
+{servicioEnvio && (
+  <DatosEnvioModal
+    datos={{
+      referencia: servicioEnvio.referencia,
+      cliente: servicioEnvio.cliente || "—",
+      placas: obtenerUnidad(servicioEnvio),
+      conductor: obtenerConductor(servicioEnvio).nombre,
+      brevete: obtenerConductor(servicioEnvio).brevete,
+    }}
+    onClose={() => setServicioEnvio(null)}
+  />
+)}
 
 {/* ===================================================
     MODAL VER SERVICIO
