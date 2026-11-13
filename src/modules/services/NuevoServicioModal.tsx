@@ -137,6 +137,49 @@ export function NuevoServicioModal({
   }
 
   // ==========================================================
+  // Sugerencias para la unidad del tercero (datos ya registrados).
+  // Se puede elegir una sugerencia o escribir un dato nuevo.
+  // ==========================================================
+  const unidadesEmpresa = conductoresDeEmpresa.flatMap((c) => c.unidades_terceros);
+  const sinRepetir = (valores: (string | null | undefined)[]) => {
+    const vistos = new Map<string, string>();
+    for (const v of valores) {
+      const t = (v ?? "").trim();
+      if (t && t.toLowerCase() !== "no especificado" && !vistos.has(t.toLowerCase())) vistos.set(t.toLowerCase(), t);
+    }
+    return [...vistos.values()].sort((x, y) => x.localeCompare(y));
+  };
+  const placasSugeridas = sinRepetir(unidadesEmpresa.map((u) => u.unit_placa));
+  const unidadElegida = unidadesEmpresa.filter(
+    (u) => u.unit_placa.trim().toLowerCase() === placa.trim().toLowerCase(),
+  );
+  const secundariasSugeridas = sinRepetir(
+    (unidadElegida.length ? unidadElegida : unidadesEmpresa).map((u) => u.unit_placa_secundaria),
+  );
+  const tiposSugeridos = sinRepetir([
+    "FURGÓN",
+    "SEMI TRAILER",
+    ...transportistasListado.flatMap((t) =>
+      t.conductores_terceros.flatMap((c) => c.unidades_terceros.map((u) => u.unit_type_vehiculo)),
+    ),
+  ]);
+
+  // Al elegir una placa ya registrada se completan la secundaria y el tipo (si están vacíos)
+  function cambiarPlaca(valor: string) {
+    const nueva = valor.toUpperCase();
+    setPlaca(nueva);
+    const conocida = unidadesEmpresa.find((u) => u.unit_placa.trim().toLowerCase() === nueva.trim().toLowerCase());
+    if (!conocida) return;
+    if (!placaSecundaria.trim() && conocida.unit_placa_secundaria) setPlacaSecundaria(conocida.unit_placa_secundaria);
+    if (!tipoVehiculo.trim()) {
+      const tipoConocido = (conocida.unit_type_vehiculo ?? "").trim();
+      const especificado = tipoConocido && tipoConocido.toLowerCase() !== "no especificado";
+      // Si no tiene tipo registrado: dos placas = SEMI TRAILER, una sola = FURGÓN
+      setTipoVehiculo(especificado ? tipoConocido : conocida.unit_placa_secundaria?.trim() ? "SEMI TRAILER" : "FURGÓN");
+    }
+  }
+
+  // ==========================================================
   // Handlers de selección
   // ==========================================================
 
@@ -967,20 +1010,18 @@ export function NuevoServicioModal({
                 </h3>
 
                 <p className="mb-3 text-xs text-slate-400">
-                  Las unidades pueden ser compartidas entre conductores de la misma empresa, escribe la placa a usar en este servicio.
+                  Elige una unidad ya registrada de la empresa o escribe una nueva. Al elegir una placa registrada se completan la placa secundaria y el tipo.
                 </p>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
                   <input
                     value={placa}
-                    onChange={(e) =>
-                      setPlaca(
-                        e.target.value.toUpperCase(),
-                      )
-                    }
+                    onChange={(e) => cambiarPlaca(e.target.value)}
+                    list="placas-sugeridas"
+                    autoComplete="off"
                     className={inputClass}
-                    placeholder="Placa *"
+                    placeholder="Placa * (elige o escribe)"
                   />
 
                   <input
@@ -990,8 +1031,10 @@ export function NuevoServicioModal({
                         e.target.value.toUpperCase(),
                       )
                     }
+                    list="secundarias-sugeridas"
+                    autoComplete="off"
                     className={inputClass}
-                    placeholder="Placa secundaria"
+                    placeholder="Placa secundaria (elige o escribe)"
                   />
 
                   <input
@@ -1001,9 +1044,27 @@ export function NuevoServicioModal({
                         e.target.value,
                       )
                     }
+                    list="tipos-sugeridos"
+                    autoComplete="off"
                     className={inputClass}
-                    placeholder="Tipo de vehículo *"
+                    placeholder="Tipo de vehículo * (elige o escribe)"
                   />
+
+                  <datalist id="placas-sugeridas">
+                    {placasSugeridas.map((v) => (
+                      <option key={v} value={v} />
+                    ))}
+                  </datalist>
+                  <datalist id="secundarias-sugeridas">
+                    {secundariasSugeridas.map((v) => (
+                      <option key={v} value={v} />
+                    ))}
+                  </datalist>
+                  <datalist id="tipos-sugeridos">
+                    {tiposSugeridos.map((v) => (
+                      <option key={v} value={v} />
+                    ))}
+                  </datalist>
 
                 </div>
 

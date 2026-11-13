@@ -28,6 +28,7 @@ export interface Servicio {
 
     conductores_terceros?: {
       in_id_conductor: number;
+      id_transportista?: number;
       in_name: string;
       in_apellido: string;
       in_dni: string;
@@ -189,6 +190,31 @@ export async function reasignarConductor(
 ): Promise<Servicio> {
   const { data } = await api.patch<Servicio>(
     `/servicios/${id}/conductor`,
+    payload,
+  );
+
+  return data;
+}
+
+export type AsignarConductorTerceroPayload =
+  | { in_id_conductor: number }
+  | {
+      conductor: {
+        nombre: string;
+        apellido: string;
+        dni: string;
+        brevete_num?: string;
+        type_brevete?: string;
+      };
+    };
+
+/** Asigna o cambia el conductor de un servicio de transportista tercero ya creado. */
+export async function asignarConductorTercero(
+  id: number,
+  payload: AsignarConductorTerceroPayload,
+): Promise<Servicio> {
+  const { data } = await api.patch<Servicio>(
+    `/servicios/${id}/conductor-tercero`,
     payload,
   );
 

@@ -12,6 +12,7 @@ import {
 import { NuevoServicioModal } from "./NuevoServicioModal";
 import { ExportarExcelModal } from "./ExportarExcelModal";
 import { DatosEnvioModal } from "./DatosEnvioModal";
+import { AsignarConductorTerceroModal } from "./AsignarConductorTerceroModal";
 
 import {
   listarConductores,
@@ -177,6 +178,9 @@ export default function ServicesPage() {
     useState(false);
   const [exportarExcelAbierto, setExportarExcelAbierto] =
     useState(false);
+
+  const [servicioTerceroConductor, setServicioTerceroConductor] =
+    useState<Servicio | null>(null);
 
   const [servicioEnvio, setServicioEnvio] =
     useState<Servicio | null>(null);
@@ -889,6 +893,18 @@ async function manejarCambioConductor() {
       </button>
     )}
 
+    {/* Asignar o cambiar conductor (transportista tercero) */}
+    {servicio.unidades_terceros && (
+      <button
+        type="button"
+        title="Asignar o cambiar conductor"
+        onClick={() => setServicioTerceroConductor(servicio)}
+        className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+      >
+        <Pencil size={18} />
+      </button>
+    )}
+
     {/* Eliminar */}
     <button
       type="button"
@@ -936,6 +952,19 @@ async function manejarCambioConductor() {
             </div>
           )}
       </div>
+
+{servicioTerceroConductor && (
+  <AsignarConductorTerceroModal
+    servicio={servicioTerceroConductor}
+    onClose={() => setServicioTerceroConductor(null)}
+    onGuardado={() => {
+      setServicioTerceroConductor(null);
+      setRecarga((actual) => actual + 1);
+      queryClient.invalidateQueries({ queryKey: ["servicios"] });
+      queryClient.invalidateQueries({ queryKey: ["transportistas"] });
+    }}
+  />
+)}
 
 {servicioEnvio && (
   <DatosEnvioModal
