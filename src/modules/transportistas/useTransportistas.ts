@@ -9,6 +9,7 @@ import {
   listarTransportistas,
   actualizarTransportista,
   eliminarTransportista,
+  eliminarConductorTercero,
   type ListarTransportistasParams,
   type CrearTransportistaPayload,
 } from "./transportistas.api";
@@ -43,6 +44,16 @@ export function useEliminarTransportista() {
 
   return useMutation({
     mutationFn: eliminarTransportista,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transportistas"] });
+    },
+  });
+}
+export function useEliminarConductorTercero() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: eliminarConductorTercero,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transportistas"] });
     },

@@ -122,3 +122,6 @@ export async function listarConductoresDeTransportista(id_transportista: number)
   const { data } = await api.get<ConductorTercero[]>(`/transportistas/${id_transportista}/conductores`);
   return data;
 }
+export async function eliminarConductorTercero(id: number): Promise<void> {
+  await api.delete(`/transportistas/conductores/${id}`);
+}

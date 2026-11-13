@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useEliminarTransportista } from "./useTransportistas";
+import { useEliminarTransportista, useEliminarConductorTercero } from "./useTransportistas";
 import { EditarTransportistaModal } from "./EditarTransportistaModal";
 import {
   Search,
@@ -600,6 +600,20 @@ function DetalleExpandido({
 }) {
   const conductores =
     transportista.conductores_terceros;
+  const eliminarConductor = useEliminarConductorTercero();
+
+  function quitarConductor(c: { in_id_conductor: number; in_name: string; in_apellido: string; unidades_terceros: { unit_placa: string }[] }) {
+    const placas = c.unidades_terceros.map((u) => u.unit_placa).join(", ");
+    const ok = window.confirm(
+      `¿Eliminar al conductor "${c.in_name} ${c.in_apellido}"${placas ? ` y sus unidades (${placas})` : ""}? Esta acción no se puede deshacer.`
+    );
+    if (!ok) return;
+    eliminarConductor.mutate(c.in_id_conductor, {
+      onError: (err: unknown) => {
+        alert(isAxiosError(err) ? err.response?.data?.error : "No se pudo eliminar el conductor");
+      },
+    });
+  }
 
   if (conductores.length === 0) {
     return (
@@ -659,6 +673,16 @@ function DetalleExpandido({
                   <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                     Conductor
                   </span>
+
+                  <button
+                    type="button"
+                    title="Eliminar conductor y sus unidades"
+                    onClick={() => quitarConductor(conductor)}
+                    disabled={eliminarConductor.isPending}
+                    className="ml-auto rounded-lg p-1.5 text-red-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
 
                 <p className="font-medium text-slate-800">
