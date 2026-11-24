@@ -7,6 +7,7 @@ interface Usuario {
   apellido: string;
   correo: string;
   id_rol: number;
+  rol?: string;
 }
 
 const NOMBRES_ROLES: Record<number, string> = {
@@ -15,6 +16,11 @@ const NOMBRES_ROLES: Record<number, string> = {
   3: "Sistemas",
   4: "Coordinador de almacén",
   5: "Facturación",
+  6: "Comercial",
+  7: "Responsable de pagos",
+  8: "Contabilidad",
+  9: "Gerencia",
+  10: "Facturación Comercial",
 };
 
 function obtenerUsuario(): Usuario | null {
@@ -45,7 +51,7 @@ export function Header({ onAbrirMenuMobile }: HeaderProps) {
     : "Usuario";
 
   const rol = usuario
-    ? NOMBRES_ROLES[usuario.id_rol] ?? "Usuario"
+    ? usuario.rol ?? NOMBRES_ROLES[usuario.id_rol] ?? "Usuario"
     : "Usuario";
 
   return (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRoles } from "../administracion/administracion.api";
 import { isAxiosError } from "axios";
 import { useCrearUsuario } from "./useCrearUsuario";
 
@@ -10,6 +11,7 @@ export function CrearUsuarioPage() {
   const [contrasena, setContrasena] = useState("");
   const [repetirContrasena, setRepetirContrasena] = useState("");
   const [idRol, setIdRol] = useState(2);
+  const { data: roles } = useRoles();
 
   const { mutate, isPending, error } = useCrearUsuario();
 
@@ -86,11 +88,9 @@ export function CrearUsuarioPage() {
           onChange={(e) => setIdRol(Number(e.target.value))}
           className="mb-3 w-full rounded-md border border-white/30 bg-white/10 px-4 py-2 text-white focus:outline-none focus:border-white"
         >
-          <option value={1} className="text-black">Administrador</option>
-          <option value={3} className="text-black">Sistemas</option>
-          <option value={2} className="text-black">Coordinador de transporte</option>
-          <option value={4} className="text-black">Coordinador de Almacén</option>
-          <option value={5} className="text-black">Facturación</option>
+          {roles?.map((r) => (
+            <option key={r.id} value={r.id} className="text-black">{r.nombre}</option>
+          ))}
         </select>
 
         <input

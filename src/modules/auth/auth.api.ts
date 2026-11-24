@@ -15,6 +15,8 @@ export interface LoginResponse {
     apellido: string;
     correo: string;
     id_rol: number;
+    rol: string;
+    permisos: string[];
   };
 }
 

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
@@ -10,8 +11,56 @@
   font-family: 'Inter', sans-serif;
 }
 
+/* Botón que toca pulsar según el "siguiente paso": brilla hasta que se pulsa */
+@keyframes brillo {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.85); }
+  50% { box-shadow: 0 0 0 7px rgba(251, 191, 36, 0); }
+}
+.brillo {
+  animation: brillo 1.4s ease-in-out infinite;
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+@keyframes aqui-salto {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-4px); }
+}
+.aqui-etiqueta {
+  animation: aqui-salto 0.9s ease-in-out infinite;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+}
+
+/* "Descargar PDF": se imprime solo el documento (proforma) */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .area-impresion,
+  .area-impresion * {
+    visibility: visible;
+  }
+  .area-impresion {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+}
+
+/* Zona que se desplaza sin mostrar la barra (ej. el menú lateral) */
+.sin-barra {
+  scrollbar-width: none;
+}
+.sin-barra::-webkit-scrollbar {
+  display: none;
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { isAxiosError } from "axios";
 import { useActualizarUsuario } from "./UseUsuarios";
 import type { Usuario } from "./usuarios.api";
+import { useRoles } from "../administracion/administracion.api";
 
 interface EditarUsuarioModalProps {
   usuario: Usuario;
@@ -17,6 +18,7 @@ export function EditarUsuarioModal({ usuario, onClose }: EditarUsuarioModalProps
 });
 
   const { mutate, isPending, error } = useActualizarUsuario();
+  const { data: roles } = useRoles();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
@@ -78,11 +80,9 @@ export function EditarUsuarioModal({ usuario, onClose }: EditarUsuarioModalProps
             onChange={handleChange}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           >
-            <option value={1}>Administrador</option>
-            <option value={3}>Sistemas</option>
-            <option value={2}>Coordinador de transporte</option>
-            <option value={4}>Coordinador de Almacén</option>
-            <option value={5}>Facturación</option>
+            {roles?.map((r) => (
+              <option key={r.id} value={r.id}>{r.nombre}</option>
+            ))}
           </select>
 
           {mensajeError && <p className="text-sm text-red-500">{mensajeError}</p>}

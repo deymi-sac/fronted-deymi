@@ -5,6 +5,8 @@ import { CambiarPasswordModal } from "./CambiosPasswordModal";
 import { CrearUsuarioModal } from "./CrearUsuarioModal";
 import { Pencil, KeyRound, Power, PowerOff, UserPlus, Users } from "lucide-react";
 import type { Usuario } from "./usuarios.api";
+import { BarraPaginas } from "../../components/ui/Paginado";
+import { usePaginado } from "../../lib/usePaginado";
 
 function iniciales(nombre: string, apellido: string) {
   return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase();
@@ -46,6 +48,8 @@ export function UsuariosPage() {
   function toggleActivo(usuario: Usuario) {
     actualizar.mutate({ id: usuario.user_id, payload: { activo: !usuario.activo } });
   }
+
+  const pag = usePaginado(usuariosFiltrados);
 
   return (
     <div className="min-h-full bg-slate-50 p-6 lg:p-8">
@@ -135,7 +139,7 @@ export function UsuariosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {usuariosFiltrados.map((u) => (
+                {pag.visibles.map((u) => (
                   <tr key={u.user_id} className="transition hover:bg-slate-50">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -221,6 +225,7 @@ export function UsuariosPage() {
                 ))}
               </tbody>
             </table>
+            <BarraPaginas total={pag.total} pagina={pag.pagina} paginas={pag.paginas} onPagina={pag.setPagina} />
           </div>
         )}
 
